@@ -368,7 +368,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
           produto_cod_item: produtoSelecionado.cod_item,
           quantidade_fechada: qtdFechada,
           quantidade_em_uso: qtdEmUso,
-          observacoes: observacoes.trim() || null,
+          observacoes: observacoes.trim() || undefined,
           produto_codigo_barras: produtoSelecionado.codigo_barras,
           data_contagem: new Date().toISOString(),
         }

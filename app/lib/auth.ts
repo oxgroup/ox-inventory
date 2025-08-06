@@ -32,7 +32,7 @@ export interface AuthStatus {
 
 export const authService = {
   // Operações ativas para cleanup
-  private activeOperations: Set<AbortablePromise<any>> = new Set(),
+  activeOperations: new Set<AbortablePromise<any>>(),
 
   // Fazer login com retry e timeout
   async login(email: string, password: string): Promise<{ user: Usuario; session: any }> {
@@ -89,7 +89,7 @@ export const authService = {
       console.log("Obtendo dados completos do usuário...")
 
       // Primeira tentativa: buscar por auth_id
-      const usuarioPorAuthId = await withTimeout(
+      const { data: usuarioPorAuthIdData, error: usuarioPorAuthIdError } = await withTimeout(
         supabase
           .from("usuarios")
           .select(`
@@ -106,8 +106,8 @@ export const authService = {
         "Timeout ao buscar usuário por auth_id"
       )
 
-      let data = usuarioPorAuthId.data
-      let error = usuarioPorAuthId.error
+      let data = usuarioPorAuthIdData
+      let error = usuarioPorAuthIdError
 
       // Segunda tentativa: buscar por email se não encontrou por auth_id
       if (error && error.code === 'PGRST116') { // Not found
@@ -123,7 +123,7 @@ export const authService = {
           throw new AuthError("Email do usuário não disponível", "NO_EMAIL")
         }
 
-        const usuarioPorEmail = await withTimeout(
+        const { data: usuarioPorEmailData, error: usuarioPorEmailError } = await withTimeout(
           supabase
             .from("usuarios")
             .select(`
@@ -140,14 +140,14 @@ export const authService = {
           "Timeout ao buscar usuário por email"
         )
 
-        data = usuarioPorEmail.data
-        error = usuarioPorEmail.error
+        data = usuarioPorEmailData
+        error = usuarioPorEmailError
 
         // Atualizar auth_id se encontrou o usuário por email
         if (!error && data && !data.auth_id) {
           console.log("Atualizando auth_id do usuário...")
           try {
-            await withTimeout(
+            const { error: updateError } = await withTimeout(
               supabase
                 .from("usuarios")
                 .update({ auth_id: authId })
@@ -155,6 +155,7 @@ export const authService = {
               5000,
               "Timeout ao atualizar auth_id"
             )
+            if (updateError) throw updateError
             data.auth_id = authId
           } catch (updateError) {
             console.warn("Falha ao atualizar auth_id, mas continuando:", updateError)
@@ -337,13 +338,19 @@ export const authService = {
     return {
       unsubscribe: () => {
         isActive = false
-        subscription.data.unsubscribe()
+        if (subscription && subscription.data && subscription.data.unsubscribe) {
+          subscription.data.unsubscribe()
+        } else if (subscription && typeof subscription.unsubscribe === 'function') {
+          subscription.unsubscribe()
+        }
       }
     }
   },
 
   // Abortar todas as operações ativas
   abortAllOperations() {
+    if (typeof window === 'undefined') return // SSR safety
+    
     console.log(`Abortando ${this.activeOperations.size} operações ativas`)
     this.activeOperations.forEach(operation => {
       try {
@@ -357,6 +364,16 @@ export const authService = {
 
   // Verificar status completo da autenticação
   async getAuthStatus(): Promise<AuthStatus> {
+    // SSR safety
+    if (typeof window === 'undefined') {
+      return {
+        state: 'loading',
+        user: null,
+        error: null,
+        isConnected: true
+      }
+    }
+    
     try {
       const session = await this.verificarSessao()
       

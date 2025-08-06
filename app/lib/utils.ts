@@ -151,9 +151,11 @@ export class LoadingState {
 
 // Verificador de conectividade
 export class ConnectivityManager {
-  private listeners: Set<(online: boolean) => void> = new Set()
+  private listeners: Set<(online: boolean) => void>
   
   constructor() {
+    this.listeners = new Set()
+    
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => this.notifyListeners(true))
       window.addEventListener('offline', () => this.notifyListeners(false))
@@ -184,4 +186,11 @@ export class ConnectivityManager {
   }
 }
 
-export const connectivity = new ConnectivityManager()
+// Instância global segura para SSR
+export const connectivity = typeof window !== 'undefined' 
+  ? new ConnectivityManager() 
+  : ({
+      isOnline: () => true,
+      addListener: () => {},
+      removeListener: () => {}
+    } as unknown as ConnectivityManager)

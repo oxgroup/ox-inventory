@@ -12,6 +12,7 @@ import { CadastroUsuarios } from "./components/cadastro-usuarios"
 import { Login } from "./components/login"
 import { HeaderApp } from "./components/header-app"
 import { ErrorBoundary } from "./components/error-boundary"
+import { ClientOnly } from "./components/client-only"
 import { authService, type Usuario, type AuthState, AuthError } from "./lib/auth"
 import { LoadingState, connectivity } from "./lib/utils"
 
@@ -32,6 +33,9 @@ export default function HomePage() {
   const mountedRef = useRef(true)
 
   useEffect(() => {
+    // Skip SSR
+    if (typeof window === 'undefined') return
+
     // Inicializar LoadingState com timeout de segurança
     loadingStateRef.current = new LoadingState(
       (loading) => {
@@ -115,7 +119,7 @@ export default function HomePage() {
   }, [])
 
   const verificarSessaoAtiva = async () => {
-    if (!mountedRef.current) return
+    if (!mountedRef.current || typeof window === 'undefined') return
 
     try {
       console.log("Verificando sessão ativa...")
@@ -397,8 +401,19 @@ export default function HomePage() {
   }
 
   return (
-    <ErrorBoundary>
-      {renderTela()}
-    </ErrorBoundary>
+    <ClientOnly 
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-[#A9C4E5] to-[#F4DDAE] flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#fabd07] mx-auto"></div>
+            <p className="text-[#5F6B6D] font-medium">Carregando aplicação...</p>
+          </div>
+        </div>
+      }
+    >
+      <ErrorBoundary>
+        {renderTela()}
+      </ErrorBoundary>
+    </ClientOnly>
   )
 }
