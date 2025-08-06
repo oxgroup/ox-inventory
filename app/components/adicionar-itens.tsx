@@ -139,6 +139,15 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
     }
   }
 
+  // Funções utilitárias para detecção de código de barras
+  const isCodigoBarras = (texto: string): boolean => {
+    return /^\d{13}$/.test(texto.trim())
+  }
+
+  const isCodigoBarrasParcial = (texto: string): boolean => {
+    return /^\d{8,12}$/.test(texto.trim())
+  }
+
   // Função para buscar produto por código de barras
   const buscarPorCodigoBarras = async (codigoBarras: string) => {
     setBuscandoPorCodigo(true)
@@ -177,22 +186,77 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
       setCarregandoProdutos(true)
       const timer = setTimeout(async () => {
         try {
-          const filtrados = produtos.filter(
-            (produto) =>
-              produto.nome.toLowerCase().includes(busca.toLowerCase()) ||
-              produto.categoria.toLowerCase().includes(busca.toLowerCase()) ||
-              produto.cod_item?.toLowerCase().includes(busca.toLowerCase()),
-          )
+          const buscaTrim = busca.trim()
+          const buscaLower = buscaTrim.toLowerCase()
+          
+          const filtrados = produtos.filter((produto) => {
+            // Se é código de barras completo (13 dígitos), busca exata
+            if (isCodigoBarras(buscaTrim)) {
+              return produto.codigo_barras === buscaTrim
+            }
+            
+            // Se é código de barras parcial (8-12 dígitos), busca por início
+            if (isCodigoBarrasParcial(buscaTrim)) {
+              return produto.codigo_barras?.startsWith(buscaTrim)
+            }
+            
+            // Busca tradicional por nome, categoria e cod_item
+            return (
+              produto.nome.toLowerCase().includes(buscaLower) ||
+              produto.categoria.toLowerCase().includes(buscaLower) ||
+              produto.cod_item?.toLowerCase().includes(buscaLower)
+            )
+          })
+          
           setProdutosFiltrados(filtrados)
+          
+          // Auto-seleção para código de barras completo
+          if (isCodigoBarras(buscaTrim) && filtrados.length === 1) {
+            console.log("Auto-selecionando produto por código de barras:", filtrados[0].nome)
+            setProdutoSelecionado(filtrados[0])
+            setBusca("")
+            
+            // Auto-foco no campo de quantidade fechada
+            setTimeout(() => {
+              const quantidadeInput = document.querySelector('input[placeholder="0.00"]') as HTMLInputElement
+              if (quantidadeInput) {
+                quantidadeInput.focus()
+              }
+            }, 100)
+          }
         } catch (error) {
           // Fallback para busca local
-          const filtrados = produtos.filter(
-            (produto) =>
-              produto.nome.toLowerCase().includes(busca.toLowerCase()) ||
-              produto.categoria.toLowerCase().includes(busca.toLowerCase()) ||
-              produto.cod_item?.toLowerCase().includes(busca.toLowerCase()),
-          )
+          const buscaTrim = busca.trim()
+          const buscaLower = buscaTrim.toLowerCase()
+          
+          const filtrados = produtos.filter((produto) => {
+            if (isCodigoBarras(buscaTrim)) {
+              return produto.codigo_barras === buscaTrim
+            }
+            if (isCodigoBarrasParcial(buscaTrim)) {
+              return produto.codigo_barras?.startsWith(buscaTrim)
+            }
+            return (
+              produto.nome.toLowerCase().includes(buscaLower) ||
+              produto.categoria.toLowerCase().includes(buscaLower) ||
+              produto.cod_item?.toLowerCase().includes(buscaLower)
+            )
+          })
           setProdutosFiltrados(filtrados)
+          
+          // Auto-seleção para código de barras completo no fallback
+          if (isCodigoBarras(buscaTrim) && filtrados.length === 1) {
+            console.log("Auto-selecionando produto por código de barras (fallback):", filtrados[0].nome)
+            setProdutoSelecionado(filtrados[0])
+            setBusca("")
+            
+            setTimeout(() => {
+              const quantidadeInput = document.querySelector('input[placeholder="0.00"]') as HTMLInputElement
+              if (quantidadeInput) {
+                quantidadeInput.focus()
+              }
+            }, 100)
+          }
         } finally {
           setCarregandoProdutos(false)
         }
@@ -306,6 +370,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
           quantidade_em_uso: qtdEmUso,
           observacoes: observacoes.trim() || null,
           produto_codigo_barras: produtoSelecionado.codigo_barras,
+          data_contagem: new Date().toISOString(),
         }
 
         const itemCriado = await itemInventarioService.adicionar(novoItem)
@@ -472,7 +537,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                 <Search className="absolute left-3 top-3 w-4 h-4 text-[#5F6B6D]" />
                 <Input
                   ref={buscaInputRef}
-                  placeholder="Buscar por nome, categoria ou código..."
+                  placeholder="Buscar por nome, categoria, código ou código de barras..."
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   className="pl-10 h-12 border-2 border-[#C9B07A] focus:border-[#fabd07]"
@@ -588,13 +653,31 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                 />
               </div>
 
-              <Button
-                onClick={adicionarItem}
-                className="w-full h-12 bg-[#fabd07] hover:bg-[#b58821] text-white font-semibold rounded-xl"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Adicionar Item
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setProdutoSelecionado(null)
+                    setQuantidadeFechada("")
+                    setQuantidadeEmUso("")
+                    setObservacoes("")
+                    // Auto-foco no campo de busca
+                    setTimeout(() => {
+                      buscaInputRef.current?.focus()
+                    }, 100)
+                  }}
+                  variant="outline"
+                  className="flex-1 h-12 border-2 border-[#FB8281] text-[#FB8281] hover:bg-[#FB8281]/10 font-semibold rounded-xl"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={adicionarItem}
+                  className="flex-1 h-12 bg-[#fabd07] hover:bg-[#b58821] text-white font-semibold rounded-xl"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Adicionar Item
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
