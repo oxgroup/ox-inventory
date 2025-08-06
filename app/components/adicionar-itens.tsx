@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { ArrowLeft, Plus, Search, Package, AlertTriangle, Check, Info } from "lucide-react"
+import { ArrowLeft, Plus, Search, Package, AlertTriangle, Check, Info, Camera } from "lucide-react"
 import { itemInventarioService, inventarioService, produtoService } from "../lib/supabase"
+import { barcodeService } from "../lib/barcode"
+import { BarcodeScanner } from "./barcode-scanner"
 
 interface AdicionarItensProps {
   inventario: any
@@ -28,6 +30,10 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
   const [dadosOffline, setDadosOffline] = useState<any>(null)
   const [isOffline, setIsOffline] = useState(false)
   const [carregandoProdutos, setCarregandoProdutos] = useState(false)
+  
+  // Estados do scanner de código de barras
+  const [scannerAberto, setScannerAberto] = useState(false)
+  const [buscandoPorCodigo, setBuscandoPorCodigo] = useState(false)
   
   // Ref para auto-foco no campo de busca
   const buscaInputRef = useRef<HTMLInputElement>(null)
@@ -66,6 +72,9 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
       const produtosCarregados = await produtoService.listar()
       setProdutos(produtosCarregados)
       setProdutosFiltrados(produtosCarregados)
+      
+      // Carregar produtos para cache de código de barras
+      await barcodeService.carregarProdutosParaCache()
     } catch (error) {
       console.error("Erro ao carregar produtos:", error)
       // Fallback para produtos mock se houver erro
@@ -127,6 +136,38 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
       setItensInventario(itens || [])
     } catch (error) {
       console.error("Erro ao carregar itens:", error)
+    }
+  }
+
+  // Função para buscar produto por código de barras
+  const buscarPorCodigoBarras = async (codigoBarras: string) => {
+    setBuscandoPorCodigo(true)
+    try {
+      console.log("Buscando produto por código:", codigoBarras)
+      
+      const produto = await barcodeService.buscarPorCodigoBarras(codigoBarras)
+      
+      if (produto) {
+        console.log("Produto encontrado:", produto.nome)
+        setProdutoSelecionado(produto)
+        setBusca("")
+        
+        // Auto-foco no campo de quantidade fechada
+        setTimeout(() => {
+          const quantidadeInput = document.querySelector('input[placeholder="0.00"]') as HTMLInputElement
+          if (quantidadeInput) {
+            quantidadeInput.focus()
+          }
+        }, 100)
+      } else {
+        alert(`Produto não encontrado para o código de barras: ${codigoBarras}`)
+      }
+    } catch (error: any) {
+      console.error("Erro ao buscar por código de barras:", error)
+      alert(error.message || "Erro ao buscar produto por código de barras")
+    } finally {
+      setBuscandoPorCodigo(false)
+      setScannerAberto(false)
     }
   }
 
@@ -264,6 +305,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
           quantidade_fechada: qtdFechada,
           quantidade_em_uso: qtdEmUso,
           observacoes: observacoes.trim() || null,
+          produto_codigo_barras: produtoSelecionado.codigo_barras,
         }
 
         const itemCriado = await itemInventarioService.adicionar(novoItem)
@@ -425,20 +467,32 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
         {/* Busca de Produtos */}
         <Card className="border-2 border-[#fabd07]">
           <CardContent className="p-4 space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-[#5F6B6D]" />
-              <Input
-                ref={buscaInputRef}
-                placeholder="Buscar por nome, categoria ou código..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="pl-10 h-12 border-2 border-[#C9B07A] focus:border-[#fabd07]"
-              />
-              {carregandoProdutos && (
-                <div className="absolute right-3 top-3">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#fabd07]"></div>
-                </div>
-              )}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-[#5F6B6D]" />
+                <Input
+                  ref={buscaInputRef}
+                  placeholder="Buscar por nome, categoria ou código..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="pl-10 h-12 border-2 border-[#C9B07A] focus:border-[#fabd07]"
+                />
+                {(carregandoProdutos || buscandoPorCodigo) && (
+                  <div className="absolute right-3 top-3">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#fabd07]"></div>
+                  </div>
+                )}
+              </div>
+              
+              <Button
+                onClick={() => setScannerAberto(true)}
+                disabled={buscandoPorCodigo}
+                className="h-12 px-4 bg-[#4AC5BB] hover:bg-[#3599B8] text-white flex items-center gap-2"
+                title="Escanear código de barras"
+              >
+                <Camera className="w-4 h-4" />
+                <span className="hidden sm:inline">Escanear</span>
+              </Button>
             </div>
 
             {/* Lista de Produtos Filtrados */}
@@ -692,6 +746,13 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Scanner de Código de Barras */}
+        <BarcodeScanner
+          isOpen={scannerAberto}
+          onClose={() => setScannerAberto(false)}
+          onScanned={buscarPorCodigoBarras}
+        />
       </div>
     </div>
   )

@@ -88,6 +88,7 @@ export interface ItemInventario {
   quantidade_em_uso: number
   data_contagem: string
   observacoes?: string
+  produto_codigo_barras?: string
 }
 
 export interface Produto {
@@ -98,6 +99,7 @@ export interface Produto {
   cod_item?: string
   loja_id: string
   ativo: boolean
+  codigo_barras?: string
 }
 
 // Serviço de inventário
