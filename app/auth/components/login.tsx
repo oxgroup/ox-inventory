@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Eye, EyeOff, LogIn, AlertCircle, RefreshCw } from "lucide-react"
-import { authService } from "../lib/auth"
+import { authService } from "../../shared/lib/auth"
 
 interface LoginProps {
   onLoginSuccess: (user: any) => void

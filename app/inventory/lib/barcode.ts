@@ -1,5 +1,5 @@
-import { supabase } from "./supabase"
-import type { Produto } from "./supabase"
+import { supabase } from "../../shared/lib/supabase"
+import type { Produto } from "../../shared/lib/supabase"
 
 // Cache offline para produtos
 let produtosCache: Produto[] = []
