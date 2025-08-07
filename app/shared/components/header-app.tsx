@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { LogOut, User, Crown, Users } from "lucide-react"
+import { LogOut, User, Crown, Users, Home } from "lucide-react"
+import Link from "next/link"
 import { authService, type Usuario } from "../lib/auth"
 
 interface HeaderAppProps {
@@ -37,6 +38,15 @@ export function HeaderApp({ usuario, onLogout, onGerenciarUsuarios }: HeaderAppP
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            <Link href="/">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[#000000] hover:bg-[#fabd07]/10"
+              >
+                <Home className="w-4 h-4" />
+              </Button>
+            </Link>
             {isAdmin && onGerenciarUsuarios && (
               <Button
                 variant="ghost"

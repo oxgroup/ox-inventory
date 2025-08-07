@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Package, BarChart3, Users, Settings, ArrowRight } from "lucide-react"
+import { Package, BarChart3, Users, Settings, ArrowRight, ClipboardList } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { authService, type Usuario } from "./shared/lib/auth"
@@ -166,6 +166,13 @@ function DashboardContent() {
             description="Sistema de Contagem de Inventário com leitura de código de barras"
             icon={<Package className="w-6 h-6" />}
             href="/inventory"
+          />
+          
+          <ModuleCard
+            title="📋 Requisições"
+            description="Sistema de Requisições de Estoque entre setores"
+            icon={<ClipboardList className="w-6 h-6" />}
+            href="/requisicoes"
           />
           
           <ModuleCard
