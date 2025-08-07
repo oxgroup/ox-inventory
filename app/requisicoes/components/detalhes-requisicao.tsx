@@ -141,6 +141,16 @@ export function DetalhesRequisicao({ requisicao: requisicaoInicial, usuario, onV
                 <span className="text-[#5F6B6D] font-medium">Solicitante:</span>
                 <span className="text-[#000000] ml-1">{requisicao.usuario_solicitante?.nome}</span>
               </div>
+              {requisicao.data_entrega_prevista && (
+                <div className="flex items-center">
+                  <Calendar className="w-4 h-4 text-[#5F6B6D] mr-2" />
+                  <span className="text-[#5F6B6D] font-medium">Entrega Prevista:</span>
+                  <span className="text-[#000000] ml-1">
+                    {new Date(requisicao.data_entrega_prevista).toLocaleDateString("pt-BR")}
+                    {requisicao.turno && ` - ${requisicao.turno}`}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 text-[#5F6B6D] mr-2" />
                 <span className="text-[#5F6B6D] font-medium">Criado:</span>

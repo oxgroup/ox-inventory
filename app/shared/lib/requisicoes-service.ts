@@ -3,6 +3,7 @@ import { supabase } from "./supabase"
 // Types para requisições
 export type StatusRequisicao = 'pendente' | 'separado' | 'entregue' | 'cancelado'
 export type StatusItemRequisicao = 'pendente' | 'separado' | 'entregue' | 'cancelado' | 'em_falta'
+export type TurnoEntrega = 'Manhã' | 'Tarde'
 
 export interface Requisicao {
   id: string
@@ -16,6 +17,8 @@ export interface Requisicao {
   data_separacao?: string
   data_entrega?: string
   data_confirmacao?: string
+  data_entrega_prevista?: string
+  turno?: TurnoEntrega
   usuario_separacao_id?: string
   usuario_entrega_id?: string
   // Dados relacionais
@@ -64,6 +67,8 @@ export interface NovaRequisicao {
   usuario_solicitante_id: string
   loja_id: string
   observacoes?: string
+  data_entrega_prevista?: string
+  turno?: TurnoEntrega
   itens: NovoItemRequisicao[]
 }
 
@@ -85,6 +90,11 @@ export const SETORES = [
   "Linha",
   "Delivery"
 ] as const
+
+export const TURNOS: TurnoEntrega[] = [
+  "Manhã",
+  "Tarde"
+]
 
 export const STATUS_COLORS = {
   // Cores para status de requisições
@@ -134,7 +144,9 @@ export const requisicoesService = {
           setor_solicitante: novaRequisicao.setor_solicitante,
           usuario_solicitante_id: novaRequisicao.usuario_solicitante_id,
           loja_id: novaRequisicao.loja_id,
-          observacoes: novaRequisicao.observacoes
+          observacoes: novaRequisicao.observacoes,
+          data_entrega_prevista: novaRequisicao.data_entrega_prevista,
+          turno: novaRequisicao.turno
         })
         .select(`
           *,

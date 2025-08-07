@@ -154,13 +154,20 @@ export function ListagemRequisicoes({
                             <MapPin className="w-3 h-3 mr-1" />
                             {requisicao.setor_solicitante}
                           </div>
-                          <div className="flex items-center text-xs text-[#5F6B6D] mb-2">
+                          <div className="flex items-center text-xs text-[#5F6B6D] mb-1">
                             <Package className="w-3 h-3 mr-1" />
                             {requisicao.total_itens} itens
                             {requisicao.itens_pendentes && requisicao.itens_pendentes > 0 && (
                               <span className="ml-2 text-[#F4D25A]">• {requisicao.itens_pendentes} pendentes</span>
                             )}
                           </div>
+                          {requisicao.data_entrega_prevista && (
+                            <div className="flex items-center text-xs text-[#5F6B6D] mb-2">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {new Date(requisicao.data_entrega_prevista).toLocaleDateString("pt-BR")}
+                              {requisicao.turno && ` - ${requisicao.turno}`}
+                            </div>
+                          )}
                           <div className="text-xs text-[#8B8C7E]">
                             {new Date(requisicao.data_criacao).toLocaleTimeString("pt-BR", {
                               hour: "2-digit",

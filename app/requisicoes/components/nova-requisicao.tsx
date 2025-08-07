@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Save, Plus, Minus, Package, Barcode, Search, AlertCircle, Camera } from "lucide-react"
 import { BarcodeScanner } from "../../inventory/components/barcode-scanner"
-import { requisicoesService, SETORES, type NovaRequisicao, type Usuario } from "../../shared/lib/requisicoes-service"
+import { requisicoesService, SETORES, TURNOS, type NovaRequisicao, type TurnoEntrega } from "../../shared/lib/requisicoes-service"
+import { type Usuario } from "../../shared/lib/auth"
 import { produtoService } from "../../shared/lib/supabase"
 
 interface NovaRequisicaoProps {
@@ -31,6 +32,8 @@ interface ItemTemp {
 export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRequisicaoProps) {
   const [setorSelecionado, setSetorSelecionado] = useState("")
   const [observacoes, setObservacoes] = useState("")
+  const [dataEntregaPrevista, setDataEntregaPrevista] = useState("")
+  const [turnoSelecionado, setTurnoSelecionado] = useState<TurnoEntrega | "">("")
   const [itens, setItens] = useState<ItemTemp[]>([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState("")
@@ -239,18 +242,7 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
         setProdutoSelecionado(produto)
         setBuscaProduto("")
       } else {
-        // Tentar buscar no servidor se não encontrou localmente
-        try {
-          const produtosEncontrados = await produtoService.buscarPorCodigoBarras(codigo)
-          if (produtosEncontrados.length > 0) {
-            setProdutoSelecionado(produtosEncontrados[0])
-            setBuscaProduto("")
-          } else {
-            setErro("Produto não encontrado para este código de barras")
-          }
-        } catch (serverError) {
-          setErro("Produto não encontrado para este código de barras")
-        }
+        setErro("Produto não encontrado para este código de barras")
       }
     } catch (error: any) {
       console.error("Erro ao buscar produto por código:", error)
@@ -278,6 +270,8 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
         usuario_solicitante_id: usuario.id,
         loja_id: usuario.loja_id,
         observacoes: observacoes || undefined,
+        data_entrega_prevista: dataEntregaPrevista || undefined,
+        turno: turnoSelecionado || undefined,
         itens: itens.map(item => ({
           produto_id: item.produto_id,
           quantidade_solicitada: item.quantidade_solicitada
@@ -349,6 +343,35 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
                   {SETORES.map((setor) => (
                     <SelectItem key={setor} value={setor}>
                       {setor}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Data de Entrega Prevista */}
+            <div className="space-y-2">
+              <label className="text-[#000000] font-semibold text-sm">Data de Entrega Prevista</label>
+              <Input
+                type="date"
+                value={dataEntregaPrevista}
+                onChange={(e) => setDataEntregaPrevista(e.target.value)}
+                className="h-12 border-2 border-[#C9B07A] focus:border-[#fabd07]"
+                min={new Date().toISOString().split('T')[0]} // Não permite datas passadas
+              />
+            </div>
+
+            {/* Turno */}
+            <div className="space-y-2">
+              <label className="text-[#000000] font-semibold text-sm">Turno</label>
+              <Select value={turnoSelecionado} onValueChange={(value: TurnoEntrega) => setTurnoSelecionado(value)}>
+                <SelectTrigger className="h-12 border-2 border-[#C9B07A] focus:border-[#fabd07]">
+                  <SelectValue placeholder="Selecione o turno..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {TURNOS.map((turno) => (
+                    <SelectItem key={turno} value={turno}>
+                      {turno}
                     </SelectItem>
                   ))}
                 </SelectContent>
