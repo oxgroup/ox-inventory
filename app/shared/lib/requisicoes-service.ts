@@ -60,6 +60,7 @@ export interface ItemRequisicao {
   produto_unidade?: string
   produto_categoria?: string
   produto_cod_item?: string
+  produto_codigo_barras?: string
 }
 
 export interface NovaRequisicao {
@@ -200,7 +201,7 @@ export const requisicoesService = {
           itens_requisicao(
             id, status, quantidade_solicitada, quantidade_separada, quantidade_entregue,
             produto_id, observacoes_item,
-            produtos(nome, unidade, categoria, cod_item)
+            produtos(nome, unidade, categoria, cod_item, codigo_barras)
           )
         `)
         .order('data_criacao', { ascending: false })
@@ -239,7 +240,8 @@ export const requisicoesService = {
           produto_nome: item.produtos?.nome,
           produto_unidade: item.produtos?.unidade,
           produto_categoria: item.produtos?.categoria,
-          produto_cod_item: item.produtos?.cod_item
+          produto_cod_item: item.produtos?.cod_item,
+          produto_codigo_barras: item.produtos?.codigo_barras
         }))
       }))
     } catch (error) {
@@ -261,7 +263,7 @@ export const requisicoesService = {
           loja:lojas(nome, codigo),
           itens_requisicao(
             *,
-            produtos(nome, unidade, categoria, cod_item)
+            produtos(nome, unidade, categoria, cod_item, codigo_barras)
           )
         `)
         .eq('id', id)
@@ -283,7 +285,8 @@ export const requisicoesService = {
           produto_nome: item.produtos?.nome,
           produto_unidade: item.produtos?.unidade,
           produto_categoria: item.produtos?.categoria,
-          produto_cod_item: item.produtos?.cod_item
+          produto_cod_item: item.produtos?.cod_item,
+          produto_codigo_barras: item.produtos?.codigo_barras
         }))
       }
     } catch (error) {

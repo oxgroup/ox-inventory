@@ -141,9 +141,11 @@ export function SepararItens({ usuario, onVoltar, onAtualizar }: SepararItensPro
     
     if (!requisicaoSelecionada) return
 
-    // Buscar item na requisição pelo código de barras
+    // Buscar item na requisição pelo código de barras (prioritário) ou código do item (fallback)
     const item = requisicaoSelecionada.itens_requisicao?.find(
-      item => item.produto_cod_item === codigo && item.status === "pendente"
+      item => 
+        (item.produto_codigo_barras === codigo || item.produto_cod_item === codigo) &&
+        item.status === "pendente"
     )
 
     if (item) {
@@ -381,7 +383,6 @@ export function SepararItens({ usuario, onVoltar, onAtualizar }: SepararItensPro
                   type="number"
                   step="0.01"
                   min="0"
-                  max={itemSeparando?.quantidade_solicitada}
                   value={quantidadeSeparada}
                   onChange={(e) => setQuantidadeSeparada(e.target.value)}
                   className="h-10 border-2 border-[#C9B07A] focus:border-[#4AC5BB]"
