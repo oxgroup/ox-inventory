@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Save, Plus, Minus, Package, Barcode, Search, AlertCircle, Camera } from "lucide-react"
+import { ArrowLeft, Save, Plus, Minus, Package, Barcode, Search, AlertCircle, Camera, Lightbulb } from "lucide-react"
 import { BarcodeScanner } from "../../inventory/components/barcode-scanner"
 import { requisicoesService, SETORES, TURNOS, type NovaRequisicao, type TurnoEntrega } from "../../shared/lib/requisicoes-service"
+import { requisicoesSugestaoService } from "../../shared/lib/requisicoes-sugestao-service"
 import { type Usuario } from "../../shared/lib/auth"
 import { produtoService } from "../../shared/lib/supabase"
 
@@ -47,6 +48,10 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
   const [quantidadeSolicitada, setQuantidadeSolicitada] = useState("1")
   const [carregandoProdutos, setCarregandoProdutos] = useState(false)
   const [scannerAberto, setScannerAberto] = useState(false)
+  
+  // Estados para sugestão de quantidade
+  const [quantidadeSugerida, setQuantidadeSugerida] = useState<number | null>(null)
+  const [nomeDiaSemana, setNomeDiaSemana] = useState<string>("")
   
   // Ref para auto-foco no campo de busca
   const buscaInputRef = useRef<HTMLInputElement>(null)
@@ -174,6 +179,30 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
     }
   }, [buscaProduto, produtos])
 
+  // Buscar sugestão de quantidade baseada no produto e data de entrega
+  const buscarSugestaoQuantidade = async (produto: any) => {
+    try {
+      if (!dataEntregaPrevista || !produto.cod_item) {
+        setQuantidadeSugerida(null)
+        setNomeDiaSemana("")
+        return
+      }
+
+      const resultado = await requisicoesSugestaoService.buscarSugestaoPorDataEntrega(
+        produto.cod_item,
+        dataEntregaPrevista,
+        usuario.loja_id
+      )
+
+      setQuantidadeSugerida(resultado.sugestao?.qtd_media || null)
+      setNomeDiaSemana(resultado.nomeDia)
+    } catch (error) {
+      console.error("Erro ao buscar sugestão:", error)
+      setQuantidadeSugerida(null)
+      setNomeDiaSemana("")
+    }
+  }
+
   const adicionarItem = () => {
     if (!produtoSelecionado) {
       setErro("Por favor, selecione um produto")
@@ -207,6 +236,8 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
     setQuantidadeSolicitada("1")
     setBuscaProduto("")
     setErro("")
+    setQuantidadeSugerida(null)
+    setNomeDiaSemana("")
     
     // Auto-foco no campo de busca para agilizar próxima inserção
     setTimeout(() => {
@@ -241,6 +272,7 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
         console.log("Produto encontrado:", produto.nome)
         setProdutoSelecionado(produto)
         setBuscaProduto("")
+        buscarSugestaoQuantidade(produto)
       } else {
         setErro("Produto não encontrado para este código de barras")
       }
@@ -440,6 +472,7 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
                     onClick={() => {
                       setProdutoSelecionado(produto)
                       setBuscaProduto("")
+                      buscarSugestaoQuantidade(produto)
                     }}
                     className="p-3 bg-white rounded-lg border border-[#C9B07A] cursor-pointer hover:bg-[#F4DDAE] transition-colors"
                   >
@@ -487,7 +520,15 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-[#000000] block mb-1">Quantidade Solicitada *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-semibold text-[#000000]">Quantidade Solicitada *</label>
+                  {quantidadeSugerida && (
+                    <Badge className="bg-[#4AC5BB] text-white text-xs flex items-center gap-1">
+                      <Lightbulb className="w-3 h-3" />
+                      Sugerido: {quantidadeSugerida} {produtoSelecionado.unidade}
+                    </Badge>
+                  )}
+                </div>
                 <Input
                   type="number"
                   step="0.01"
@@ -497,7 +538,14 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
                   onChange={(e) => setQuantidadeSolicitada(e.target.value)}
                   className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
                 />
-                <div className="text-xs text-[#5F6B6D] mt-1">{produtoSelecionado.unidade}</div>
+                <div className="text-xs text-[#5F6B6D] mt-1">
+                  {produtoSelecionado.unidade}
+                  {quantidadeSugerida && nomeDiaSemana && (
+                    <span className="text-[#4AC5BB] ml-2">
+                      • Sugestão para {nomeDiaSemana}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-3">
@@ -505,6 +553,8 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
                   onClick={() => {
                     setProdutoSelecionado(null)
                     setQuantidadeSolicitada("1")
+                    setQuantidadeSugerida(null)
+                    setNomeDiaSemana("")
                     // Auto-foco no campo de busca
                     setTimeout(() => {
                       buscaInputRef.current?.focus()
