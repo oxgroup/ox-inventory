@@ -182,22 +182,39 @@ export function NovaRequisicao({ usuario, onVoltar, onRequisicaoCriada }: NovaRe
   // Buscar sugestão de quantidade baseada no produto e data de entrega
   const buscarSugestaoQuantidade = async (produto: any) => {
     try {
+      console.log("🔍 [DEBUG] Iniciando busca de sugestão...")
+      console.log("📅 Data entrega prevista:", dataEntregaPrevista)
+      console.log("📦 Produto cod_item:", produto.cod_item)
+      console.log("🏪 Usuario loja_id:", usuario.loja_id)
+      
       if (!dataEntregaPrevista || !produto.cod_item) {
+        console.log("❌ [DEBUG] Condições não atendidas:")
+        console.log("  - Data preenchida:", !!dataEntregaPrevista)
+        console.log("  - Produto tem cod_item:", !!produto.cod_item)
         setQuantidadeSugerida(null)
         setNomeDiaSemana("")
         return
       }
 
+      console.log("🚀 [DEBUG] Executando busca no service...")
       const resultado = await requisicoesSugestaoService.buscarSugestaoPorDataEntrega(
         produto.cod_item,
         dataEntregaPrevista,
         usuario.loja_id
       )
 
+      console.log("📊 [DEBUG] Resultado da busca:", resultado)
+      console.log("💡 Sugestão encontrada:", resultado.sugestao)
+      console.log("📅 Dia da semana:", resultado.diaSemana, "-", resultado.nomeDia)
+
       setQuantidadeSugerida(resultado.sugestao?.qtd_media || null)
       setNomeDiaSemana(resultado.nomeDia)
+      
+      console.log("✅ [DEBUG] Estados atualizados:")
+      console.log("  - Quantidade sugerida:", resultado.sugestao?.qtd_media || "nenhuma")
+      console.log("  - Nome do dia:", resultado.nomeDia)
     } catch (error) {
-      console.error("Erro ao buscar sugestão:", error)
+      console.error("💥 [DEBUG] Erro ao buscar sugestão:", error)
       setQuantidadeSugerida(null)
       setNomeDiaSemana("")
     }
