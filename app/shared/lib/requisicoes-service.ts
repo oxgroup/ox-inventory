@@ -448,6 +448,29 @@ export const requisicoesService = {
     })
   },
 
+  // Atualizar quantidade solicitada de item
+  async atualizarQuantidadeSolicitada(
+    itemId: string, 
+    novaQuantidade: number,
+    observacoes?: string
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('itens_requisicao')
+        .update({
+          quantidade_solicitada: novaQuantidade,
+          observacoes_item: observacoes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', itemId)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Erro ao atualizar quantidade solicitada:', error)
+      throw error
+    }
+  },
+
   // ================== ESTATÍSTICAS ==================
 
   // Obter estatísticas do dashboard

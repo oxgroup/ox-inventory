@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { ArrowLeft, Truck, Package, CheckCircle, AlertTriangle, MapPin, User, Clock } from "lucide-react"
-import { requisicoesService, STATUS_COLORS, STATUS_LABELS, type Requisicao, type Usuario } from "../../shared/lib/requisicoes-service"
+import { ArrowLeft, Truck, Package, CheckCircle, AlertTriangle, MapPin, User, Clock, Edit, Eye } from "lucide-react"
+import { requisicoesService, STATUS_COLORS, STATUS_LABELS, type Requisicao, type Usuario, type ItemRequisicao } from "../../shared/lib/requisicoes-service"
+import { EditarItemModal } from "./editar-item-modal"
 
 interface EntregasProps {
   usuario: Usuario
@@ -20,6 +21,10 @@ export function Entregas({ usuario, onVoltar, onAtualizar }: EntregasProps) {
   const [processando, setProcessando] = useState(false)
   const [requisicaoEntrega, setRequisicaoEntrega] = useState<Requisicao | null>(null)
   const [dialogConfirmar, setDialogConfirmar] = useState(false)
+  const [dialogDetalhes, setDialogDetalhes] = useState(false)
+  const [requisicaoDetalhes, setRequisicaoDetalhes] = useState<Requisicao | null>(null)
+  const [itemEditando, setItemEditando] = useState<ItemRequisicao | null>(null)
+  const [modalEditarAberto, setModalEditarAberto] = useState(false)
 
   useEffect(() => {
     carregarRequisicoesSeparadas()
@@ -44,6 +49,35 @@ export function Entregas({ usuario, onVoltar, onAtualizar }: EntregasProps) {
   const abrirDialogEntrega = (requisicao: Requisicao) => {
     setRequisicaoEntrega(requisicao)
     setDialogConfirmar(true)
+  }
+
+  const abrirDetalhes = (requisicao: Requisicao) => {
+    setRequisicaoDetalhes(requisicao)
+    setDialogDetalhes(true)
+  }
+
+  const abrirEdicaoItem = (item: ItemRequisicao) => {
+    setItemEditando(item)
+    setModalEditarAberto(true)
+  }
+
+  const salvarEdicaoItem = async (itemId: string, novaQuantidade: number, observacoes: string) => {
+    try {
+      await requisicoesService.atualizarQuantidadeSolicitada(itemId, novaQuantidade, observacoes)
+      
+      // Recarregar dados
+      await carregarRequisicoesSeparadas()
+      
+      // Se estamos visualizando detalhes, atualizar também
+      if (requisicaoDetalhes) {
+        const requisicaoAtualizada = await requisicoesService.buscarPorId(requisicaoDetalhes.id)
+        setRequisicaoDetalhes(requisicaoAtualizada)
+      }
+      
+      onAtualizar()
+    } catch (error) {
+      throw error
+    }
   }
 
   const registrarEntrega = async () => {
@@ -170,13 +204,23 @@ export function Entregas({ usuario, onVoltar, onAtualizar }: EntregasProps) {
                   </div>
                 </div>
 
-                <Button
-                  onClick={() => abrirDialogEntrega(requisicao)}
-                  className="w-full bg-[#fabd07] hover:bg-[#b58821] text-white h-12 font-semibold"
-                >
-                  <Truck className="w-5 h-5 mr-2" />
-                  Registrar Entrega
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => abrirDetalhes(requisicao)}
+                    variant="outline"
+                    className="flex-1 h-10 border-[#3599B8] text-[#3599B8] hover:bg-[#3599B8]/10 text-sm"
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    Ver Itens
+                  </Button>
+                  <Button
+                    onClick={() => abrirDialogEntrega(requisicao)}
+                    className="flex-1 bg-[#fabd07] hover:bg-[#b58821] text-white h-10 font-semibold text-sm"
+                  >
+                    <Truck className="w-4 h-4 mr-1" />
+                    Entregar
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -260,6 +304,97 @@ export function Entregas({ usuario, onVoltar, onAtualizar }: EntregasProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog Detalhes da Requisição */}
+        <Dialog open={dialogDetalhes} onOpenChange={setDialogDetalhes}>
+          <DialogContent className="max-w-md mx-auto max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-[#3599B8]">
+                <Package className="w-5 h-5 mr-2" />
+                Itens da Requisição
+              </DialogTitle>
+            </DialogHeader>
+            
+            {requisicaoDetalhes && (
+              <div className="space-y-4">
+                <div className="bg-[#F4DDAE] p-3 rounded-lg text-sm">
+                  <div className="font-semibold text-[#000000] mb-1">
+                    {requisicaoDetalhes.numero_requisicao}
+                  </div>
+                  <div className="text-[#5F6B6D]">
+                    Setor: {requisicaoDetalhes.setor_solicitante} • 
+                    Solicitante: {requisicaoDetalhes.usuario_solicitante?.nome}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {requisicaoDetalhes.itens_requisicao?.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-white p-3 rounded-lg border border-[#DFBFBF]"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="font-semibold text-[#000000] text-sm">
+                            {item.produto_nome}
+                          </div>
+                          <div className="text-xs text-[#5F6B6D]">
+                            {item.produto_categoria} • {item.produto_cod_item}
+                          </div>
+                          <div className="text-xs text-[#5F6B6D] mt-1 space-y-1">
+                            <div>Solicitado: {item.quantidade_solicitada} {item.produto_unidade}</div>
+                            <div>Separado: {item.quantidade_separada} {item.produto_unidade}</div>
+                            {item.observacoes_item && (
+                              <div className="text-[#8B8C7E] italic">
+                                Obs: {item.observacoes_item}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <Badge className={`${STATUS_COLORS.item[item.status]} text-xs ml-2`}>
+                          {STATUS_LABELS.item[item.status]}
+                        </Badge>
+                      </div>
+
+                      {item.status === "separado" && (
+                        <Button
+                          onClick={() => abrirEdicaoItem(item)}
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-[#fabd07] text-[#fabd07] hover:bg-[#fabd07]/10 h-8 text-xs"
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          Editar Quantidade
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                onClick={() => setDialogDetalhes(false)}
+                className="w-full bg-[#3599B8] hover:bg-[#4AC5BB] text-white"
+              >
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal Editar Item */}
+        <EditarItemModal
+          item={itemEditando}
+          isOpen={modalEditarAberto}
+          onClose={() => {
+            setModalEditarAberto(false)
+            setItemEditando(null)
+          }}
+          onSave={salvarEdicaoItem}
+          contexto="entrega"
+        />
       </div>
     </div>
   )

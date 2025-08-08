@@ -1,29 +1,27 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, List, Package, Clock, CheckCircle } from "lucide-react"
-import { NovaRequisicao } from "./components/nova-requisicao"
 import { ListagemRequisicoes } from "./components/listagem-requisicoes"
 import { DetalhesRequisicao } from "./components/detalhes-requisicao"
-import { SepararItens } from "./components/separar-itens"
-import { Entregas } from "./components/entregas"
-import { ConfirmarRecebimento } from "./components/confirmar-recebimento"
 import { Login } from "../auth/components/login"
 import { HeaderApp } from "../shared/components/header-app"
 import { ErrorBoundary } from "../shared/components/error-boundary"
 import { ClientOnly } from "../shared/components/client-only"
-import { authService, type Usuario } from "../shared/lib/auth"
+import { useAuth } from "../shared/hooks/useAuth"
 import { requisicoesService, type Requisicao } from "../shared/lib/requisicoes-service"
+import type { Usuario } from "../shared/lib/auth"
 
-type TelaAtiva = "home" | "nova" | "listagem" | "detalhes" | "separar" | "entregas" | "confirmar"
+type TelaAtiva = "home" | "listagem" | "detalhes"
 
 export default function RequisicoesPage() {
   const [telaAtiva, setTelaAtiva] = useState<TelaAtiva>("home")
   const [requisicaoAtiva, setRequisicaoAtiva] = useState<Requisicao | null>(null)
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { usuario, loading, login, logout } = useAuth()
+  const router = useRouter()
   const [estatisticas, setEstatisticas] = useState<{
     total: number
     pendentes: number
@@ -39,25 +37,10 @@ export default function RequisicoesPage() {
   })
 
   useEffect(() => {
-    checkAuthStatus()
-  }, [])
-
-  useEffect(() => {
     if (usuario) {
       carregarEstatisticas()
     }
   }, [usuario])
-
-  const checkAuthStatus = async () => {
-    try {
-      const currentUser = await authService.obterUsuarioAtual()
-      setUsuario(currentUser)
-    } catch (error) {
-      console.error("Erro ao verificar usuário:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const carregarEstatisticas = async () => {
     if (!usuario) return
@@ -74,24 +57,7 @@ export default function RequisicoesPage() {
   }
 
   const handleLoginSuccess = (user: Usuario) => {
-    setUsuario(user)
     setTelaAtiva("home")
-  }
-
-  const handleLogout = async () => {
-    try {
-      await authService.logout()
-      setUsuario(null)
-      setTelaAtiva("home")
-      setRequisicaoAtiva(null)
-    } catch (error) {
-      console.error("Erro no logout:", error)
-    }
-  }
-
-  const handleRequisicaoCriada = () => {
-    setTelaAtiva("home")
-    carregarEstatisticas()
   }
 
   const handleRequisicaoAtualizada = () => {
@@ -118,14 +84,6 @@ export default function RequisicoesPage() {
 
   const renderTela = () => {
     switch (telaAtiva) {
-      case "nova":
-        return (
-          <NovaRequisicao
-            usuario={usuario}
-            onVoltar={() => setTelaAtiva("home")}
-            onRequisicaoCriada={handleRequisicaoCriada}
-          />
-        )
       case "listagem":
         return (
           <ListagemRequisicoes
@@ -147,30 +105,6 @@ export default function RequisicoesPage() {
             onAtualizar={handleRequisicaoAtualizada}
           />
         )
-      case "separar":
-        return (
-          <SepararItens
-            usuario={usuario}
-            onVoltar={() => setTelaAtiva("home")}
-            onAtualizar={handleRequisicaoAtualizada}
-          />
-        )
-      case "entregas":
-        return (
-          <Entregas
-            usuario={usuario}
-            onVoltar={() => setTelaAtiva("home")}
-            onAtualizar={handleRequisicaoAtualizada}
-          />
-        )
-      case "confirmar":
-        return (
-          <ConfirmarRecebimento
-            usuario={usuario}
-            onVoltar={() => setTelaAtiva("home")}
-            onAtualizar={handleRequisicaoAtualizada}
-          />
-        )
       default:
         return (
           <div className="min-h-screen bg-gradient-to-br from-[#A9C4E5] to-[#F4DDAE] p-4">
@@ -179,7 +113,7 @@ export default function RequisicoesPage() {
               <div className="mb-4">
                 <HeaderApp
                   usuario={usuario}
-                  onLogout={handleLogout}
+                  onLogout={logout}
                   onGerenciarUsuarios={
                     usuario.permissoes?.includes("excluir") ? undefined : undefined
                   }
@@ -247,7 +181,7 @@ export default function RequisicoesPage() {
                     <Card className="border-2 border-[#fabd07] shadow-lg">
                       <CardContent className="p-6">
                         <Button
-                          onClick={() => setTelaAtiva("nova")}
+                          onClick={() => router.push('/requisicoes/nova')}
                           className="w-full h-16 bg-[#fabd07] hover:bg-[#b58821] text-white text-lg font-semibold rounded-xl"
                         >
                           <Plus className="w-6 h-6 mr-3" />
@@ -260,7 +194,7 @@ export default function RequisicoesPage() {
                       <Card className="border-2 border-[#4AC5BB] shadow-lg">
                         <CardContent className="p-6">
                           <Button
-                            onClick={() => setTelaAtiva("confirmar")}
+                            onClick={() => router.push('/requisicoes/confirmar')}
                             className="w-full h-16 bg-[#4AC5BB] hover:bg-[#3599B8] text-white text-lg font-semibold rounded-xl"
                           >
                             <CheckCircle className="w-6 h-6 mr-3" />
@@ -279,7 +213,7 @@ export default function RequisicoesPage() {
                       <Card className="border-2 border-[#F4D25A] shadow-lg">
                         <CardContent className="p-6">
                           <Button
-                            onClick={() => setTelaAtiva("separar")}
+                            onClick={() => router.push('/requisicoes/separacao')}
                             className="w-full h-16 bg-[#F4D25A] hover:bg-[#b58821] text-[#000000] text-lg font-semibold rounded-xl"
                           >
                             <Package className="w-6 h-6 mr-3" />
@@ -293,7 +227,7 @@ export default function RequisicoesPage() {
                       <Card className="border-2 border-[#3599B8] shadow-lg">
                         <CardContent className="p-6">
                           <Button
-                            onClick={() => setTelaAtiva("entregas")}
+                            onClick={() => router.push('/requisicoes/entregas')}
                             className="w-full h-16 bg-[#3599B8] hover:bg-[#4AC5BB] text-white text-lg font-semibold rounded-xl"
                           >
                             <Clock className="w-6 h-6 mr-3" />
