@@ -188,6 +188,7 @@ export const requisicoesService = {
     usuario_id?: string
     setor?: string
     limite?: number
+    semConfirmacao?: boolean // Novo filtro para excluir requisições confirmadas
   } = {}): Promise<Requisicao[]> {
     try {
       let query = supabase
@@ -221,6 +222,9 @@ export const requisicoesService = {
       }
       if (filtros.limite) {
         query = query.limit(filtros.limite)
+      }
+      if (filtros.semConfirmacao) {
+        query = query.is('data_confirmacao', null)
       }
 
       const { data, error } = await query

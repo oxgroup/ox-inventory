@@ -33,11 +33,12 @@ export function ConfirmarRecebimento({ usuario, onVoltar, onAtualizar }: Confirm
   const carregarRequisicoesEntregues = async () => {
     try {
       setCarregando(true)
-      // Buscar apenas minhas requisições que foram entregues
+      // Buscar apenas minhas requisições que foram entregues e ainda não confirmadas
       const requisicoes = await requisicoesService.listar({
         loja_id: usuario.loja_id,
         status: "entregue",
-        usuario_id: usuario.id // Filtrar por usuário solicitante
+        usuario_id: usuario.id, // Filtrar por usuário solicitante
+        semConfirmacao: true // Excluir requisições já confirmadas
       })
       setRequisicoesEntregues(requisicoes)
     } catch (error) {
