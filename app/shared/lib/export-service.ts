@@ -4,7 +4,7 @@ import { itemInventarioService } from "./supabase"
 export const exportService = {
   /**
    * Exporta a contagem de um inventário para arquivo TXT
-   * Formato: produto_id;quantidade_total (com vírgula decimal brasileira)
+   * Formato: produto_cod_item;quantidade_total (com vírgula decimal brasileira)
    */
   async exportarContagem(inventarioId: string, nomeSetor: string): Promise<void> {
     try {
@@ -18,8 +18,15 @@ export const exportService = {
       
       console.log("📊 [EXPORT] Itens encontrados:", itens.length)
       
-      // 2. Processar dados: produto_id;quantidade_total (formato BR)
-      const conteudo = itens.map(item => {
+      // 2. Filtrar apenas itens que possuem produto_cod_item
+      const itensComCodigo = itens.filter(item => item.produto_cod_item)
+      
+      if (itensComCodigo.length === 0) {
+        throw new Error("Nenhum item com código de produto foi encontrado para exportação")
+      }
+      
+      // 3. Processar dados: produto_cod_item;quantidade_total (formato BR)
+      const conteudo = itensComCodigo.map(item => {
         const total = (item.quantidade_fechada || 0) + (item.quantidade_em_uso || 0)
         
         // Formatar número brasileiro (vírgula como separador decimal)
@@ -29,16 +36,16 @@ export const exportService = {
           useGrouping: false // Remove separador de milhares
         })
         
-        return `${item.produto_id};${totalFormatado}`
+        return `${item.produto_cod_item};${totalFormatado}`
       }).join('\n')
       
       console.log("📝 [EXPORT] Conteúdo gerado:", conteudo.split('\n').length, "linhas")
       
-      // 3. Gerar nome do arquivo com data atual
+      // 4. Gerar nome do arquivo com data atual
       const dataAtual = new Date().toISOString().split('T')[0]
       const nomeArquivo = `inventario_${nomeSetor.replace(/\s+/g, '_')}_${dataAtual}.txt`
       
-      // 4. Baixar arquivo
+      // 5. Baixar arquivo
       this.baixarArquivo(conteudo, nomeArquivo)
       
       console.log("✅ [EXPORT] Arquivo exportado com sucesso:", nomeArquivo)
@@ -101,17 +108,23 @@ export const exportService = {
         return "Nenhum item encontrado"
       }
       
-      const preview = itens.slice(0, 5).map(item => {
+      const itensComCodigo = itens.filter(item => item.produto_cod_item)
+      
+      if (itensComCodigo.length === 0) {
+        return "Nenhum item com código encontrado"
+      }
+      
+      const preview = itensComCodigo.slice(0, 5).map(item => {
         const total = (item.quantidade_fechada || 0) + (item.quantidade_em_uso || 0)
         const totalFormatado = total.toLocaleString('pt-BR', {
           minimumFractionDigits: 0,
           maximumFractionDigits: 2,
           useGrouping: false
         })
-        return `${item.produto_id};${totalFormatado}`
+        return `${item.produto_cod_item};${totalFormatado}`
       }).join('\n')
       
-      const totalItens = itens.length
+      const totalItens = itensComCodigo.length
       const sufixo = totalItens > 5 ? `\n... e mais ${totalItens - 5} itens` : ''
       
       return preview + sufixo

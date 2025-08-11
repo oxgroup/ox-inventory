@@ -403,7 +403,7 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
                 )}
               </Button>
               <p className="text-xs text-[#5F6B6D] text-center mt-2">
-                Gera arquivo TXT com produto_id;quantidade_total
+                Gera arquivo TXT com produto_cod_item;quantidade_total
               </p>
             </CardContent>
           </Card>
