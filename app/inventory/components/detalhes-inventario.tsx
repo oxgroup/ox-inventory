@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { ArrowLeft, Edit, Check, X, Package, CheckCircle } from "lucide-react"
+import { ArrowLeft, Edit, Check, X, Package, CheckCircle, Download } from "lucide-react"
 import { itemInventarioService, inventarioService } from "../../shared/lib/supabase"
+import { exportService } from "../../shared/lib/export-service"
 
 // Mapeamento de categorias para subgrupos
 const SUBGRUPOS = {
@@ -50,6 +51,7 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
   const [dialogConciliar, setDialogConciliar] = useState(false)
   const [quantidadeFechada, setQuantidadeFechada] = useState("")
   const [quantidadeEmUso, setQuantidadeEmUso] = useState("")
+  const [exportando, setExportando] = useState(false)
 
   useEffect(() => {
     if (inventario?.id) {
@@ -194,6 +196,19 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
     } catch (error) {
       console.error("Erro ao conciliar inventário:", error)
       alert("Erro ao conciliar inventário. Tente novamente.")
+    }
+  }
+
+  const exportarContagem = async () => {
+    try {
+      setExportando(true)
+      await exportService.exportarContagem(inventario.id, inventario.setor)
+      // Sucesso silencioso - o arquivo será baixado automaticamente
+    } catch (error) {
+      console.error("Erro ao exportar contagem:", error)
+      alert("Erro ao exportar contagem. Verifique se há itens no inventário e tente novamente.")
+    } finally {
+      setExportando(false)
     }
   }
 
@@ -365,6 +380,34 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
             </div>
           </CardContent>
         </Card>
+
+        {/* Botão Exportar Contagem */}
+        {exportService.podeExportar(inventario) && (
+          <Card className="border-2 border-[#fabd07]">
+            <CardContent className="p-4">
+              <Button
+                onClick={exportarContagem}
+                disabled={exportando}
+                className="w-full h-12 bg-[#fabd07] hover:bg-[#b58821] text-white font-semibold rounded-xl"
+              >
+                {exportando ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Exportando...
+                  </div>
+                ) : (
+                  <>
+                    <Download className="w-5 h-5 mr-2" />
+                    Exportar Contagem
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-[#5F6B6D] text-center mt-2">
+                Gera arquivo TXT com produto_id;quantidade_total
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Botão Conciliar Inventário */}
         {podeConciliar() && (
