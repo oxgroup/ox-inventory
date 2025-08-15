@@ -104,62 +104,50 @@ export function CadastroUsuarios({ usuario, onVoltar }: CadastroUsuariosProps) {
 
     try {
       if (modo === "novo") {
-        // Criar novo usuário no Auth
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email,
-          password: senha,
-          email_confirm: true,
+        // Criar novo usuário via API
+        const response = await fetch('/api/usuarios', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            nome,
+            email,
+            senha,
+            loja_id: lojaSelecionada,
+            permissoes: permissoesSelecionadas,
+          }),
         })
 
-        if (authError) {
-          setErro("Erro ao criar usuário: " + authError.message)
-          return
-        }
+        const result = await response.json()
 
-        // Criar entrada na tabela usuarios
-        const { data: userData, error: userError } = await supabase.from("usuarios").insert({
-          auth_id: authData.user.id,
-          nome,
-          email,
-          loja_id: lojaSelecionada,
-          permissoes: permissoesSelecionadas,
-        }).select().single()
-
-        if (userError) {
-          // Se falhar ao criar usuário na tabela, remover do Auth
-          await supabase.auth.admin.deleteUser(authData.user.id)
-          setErro("Erro ao salvar dados do usuário: " + userError.message)
+        if (!response.ok) {
+          setErro(result.error || "Erro ao criar usuário")
           return
         }
       } else {
-        // Atualizar usuário existente
-        const updates: any = {
-          nome,
-          email,
-          loja_id: lojaSelecionada,
-          permissoes: permissoesSelecionadas,
-        }
+        // Atualizar usuário existente via API
+        const response = await fetch('/api/usuarios', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: usuarioEditando.id,
+            nome,
+            email,
+            senha,
+            loja_id: lojaSelecionada,
+            permissoes: permissoesSelecionadas,
+            auth_id: usuarioEditando.auth_id,
+          }),
+        })
 
-        const { error: userError } = await supabase
-          .from("usuarios")
-          .update(updates)
-          .eq("id", usuarioEditando.id)
+        const result = await response.json()
 
-        if (userError) {
-          setErro("Erro ao atualizar usuário: " + userError.message)
+        if (!response.ok) {
+          setErro(result.error || "Erro ao atualizar usuário")
           return
-        }
-
-        // Atualizar senha no Auth se fornecida
-        if (senha && usuarioEditando.auth_id) {
-          const { error: authError } = await supabase.auth.admin.updateUserById(usuarioEditando.auth_id, {
-            password: senha,
-          })
-
-          if (authError) {
-            console.error("Erro ao atualizar senha:", authError)
-            // Não falhar a operação toda por causa da senha
-          }
         }
       }
 
@@ -191,21 +179,23 @@ export function CadastroUsuarios({ usuario, onVoltar }: CadastroUsuariosProps) {
     }
 
     try {
-      // Excluir da tabela usuarios
-      const { error: deleteError } = await supabase.from("usuarios").delete().eq("id", usuarioParaExcluir.id)
+      // Excluir usuário via API
+      const response = await fetch('/api/usuarios', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: usuarioParaExcluir.id,
+          auth_id: usuarioParaExcluir.auth_id,
+        }),
+      })
 
-      if (deleteError) {
-        console.error("Erro ao excluir usuário:", deleteError)
-        setErro("Erro ao excluir usuário: " + deleteError.message)
+      const result = await response.json()
+
+      if (!response.ok) {
+        setErro(result.error || "Erro ao excluir usuário")
         return
-      }
-
-      // Excluir do Auth se tiver auth_id
-      if (usuarioParaExcluir.auth_id) {
-        const { error: authError } = await supabase.auth.admin.deleteUser(usuarioParaExcluir.auth_id)
-        if (authError) {
-          console.error("Erro ao excluir do Auth:", authError)
-        }
       }
 
       setSucesso("Usuário excluído com sucesso!")
