@@ -119,21 +119,22 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#A9C4E5] to-[#F4DDAE]">
-      <div className="container mx-auto p-4 md:p-8">
+      <div className="container mx-auto px-4 py-4 md:p-8 max-w-7xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
             <Button
               onClick={onVoltar}
               variant="outline"
-              className="border-[#3599B8] text-[#3599B8] hover:bg-[#3599B8]/10"
+              className="border-[#3599B8] text-[#3599B8] hover:bg-[#3599B8]/10 flex-shrink-0"
+              size="sm"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Voltar</span>
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-[#000000]">📦 Produtos</h1>
-              <p className="text-[#5F6B6D]">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#000000] truncate">📦 Produtos</h1>
+              <p className="text-sm text-[#5F6B6D]">
                 {produtosFiltrados.length} de {produtos.length} produtos
               </p>
             </div>
@@ -149,7 +150,7 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Busca */}
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-[#5F6B6D]" />
@@ -233,63 +234,77 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
             produtosFiltrados.map((produto) => (
               <Card key={produto.id} className="border-2 border-[#3599B8] shadow-lg hover:border-[#fabd07] transition-colors">
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-[#4AC5BB]/20 rounded-lg flex items-center justify-center">
-                          <Package className="w-6 h-6 text-[#4AC5BB]" />
+                  {/* Layout responsivo: stack em mobile, horizontal em desktop */}
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    
+                    {/* Conteúdo principal */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-[#4AC5BB]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Package className="w-5 h-5 md:w-6 md:h-6 text-[#4AC5BB]" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-[#000000] mb-1 truncate">
+                          <h3 className="text-base md:text-lg font-semibold text-[#000000] mb-1 leading-tight">
                             {produto.nome}
                           </h3>
-                          <div className="flex items-center gap-4 text-sm text-[#5F6B6D] mb-2">
-                            <span><strong>Categoria:</strong> {produto.categoria}</span>
-                            <span><strong>Unidade:</strong> {produto.unidade}</span>
+                          
+                          {/* Informações em stack para mobile */}
+                          <div className="space-y-1 md:space-y-0 md:flex md:items-center md:gap-4 text-sm text-[#5F6B6D] mb-2">
+                            <div className="flex items-center gap-3">
+                              <span><strong>Categoria:</strong> {produto.categoria}</span>
+                              <span><strong>Unidade:</strong> {produto.unidade}</span>
+                            </div>
                             {produto.cod_item && (
-                              <span><strong>Código:</strong> {produto.cod_item}</span>
+                              <div className="md:block">
+                                <span><strong>Código:</strong> {produto.cod_item}</span>
+                              </div>
                             )}
                           </div>
+                          
                           {produto.codigo_barras && (
-                            <p className="text-xs text-[#8B8C7E] mb-2">
+                            <p className="text-xs text-[#8B8C7E] mb-3 font-mono break-all">
                               <strong>Código de barras:</strong> {produto.codigo_barras}
                             </p>
                           )}
-                          <div className="flex items-center gap-2">
-                            <Badge 
-                              className={produto.ativo 
-                                ? "bg-[#97C93D] text-white hover:bg-[#7BA82E]" 
-                                : "bg-[#FB8281] text-white hover:bg-[#FA6B6A]"}
-                            >
-                              {produto.ativo ? "Ativo" : "Inativo"}
-                            </Badge>
-                            <Badge variant="outline" className="border-[#C9B07A] text-[#C9B07A]">
-                              Loja {produto.loja_id}
-                            </Badge>
-                          </div>
                         </div>
+                      </div>
+                      
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge 
+                          className={produto.ativo 
+                            ? "bg-[#97C93D] text-white hover:bg-[#7BA82E]" 
+                            : "bg-[#FB8281] text-white hover:bg-[#FA6B6A]"}
+                        >
+                          {produto.ativo ? "Ativo" : "Inativo"}
+                        </Badge>
+                        <Badge variant="outline" className="border-[#C9B07A] text-[#C9B07A]">
+                          Loja {produto.loja_id}
+                        </Badge>
                       </div>
                     </div>
 
-                    {/* Ações */}
-                    <div className="flex items-center gap-2 ml-4">
+                    {/* Ações - Full width em mobile, lado direito em desktop */}
+                    <div className="flex items-center gap-2 md:flex-col md:gap-1 md:ml-4 md:flex-shrink-0">
                       <Button
                         onClick={() => onEditarProduto(produto)}
                         size="sm"
-                        className="bg-[#3599B8] hover:bg-[#2A7A96] text-white"
+                        className="bg-[#3599B8] hover:bg-[#2A7A96] text-white flex-1 md:flex-none md:w-20"
                       >
-                        <Eye className="w-4 h-4 mr-1" />
-                        Ver
+                        <Eye className="w-4 h-4 md:mr-1" />
+                        <span className="md:inline">Ver</span>
                       </Button>
                       <Button
                         onClick={() => toggleStatus(produto)}
                         size="sm"
                         variant="outline"
-                        className={produto.ativo 
+                        className={`flex-1 md:flex-none md:w-20 ${produto.ativo 
                           ? "border-[#FB8281] text-[#FB8281] hover:bg-[#FB8281]/10" 
-                          : "border-[#97C93D] text-[#97C93D] hover:bg-[#97C93D]/10"}
+                          : "border-[#97C93D] text-[#97C93D] hover:bg-[#97C93D]/10"}`}
                       >
-                        {produto.ativo ? "Desativar" : "Ativar"}
+                        <span className="text-xs md:text-sm">
+                          {produto.ativo ? "Desativar" : "Ativar"}
+                        </span>
                       </Button>
                     </div>
                   </div>
