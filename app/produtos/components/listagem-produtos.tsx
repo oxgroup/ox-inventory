@@ -24,9 +24,7 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
   const [busca, setBusca] = useState("")
   const [filtroCategoria, setFiltroCategoria] = useState<string>("todos")
   const [filtroStatus, setFiltroStatus] = useState<string>("todos")
-  const [filtroLoja, setFiltroLoja] = useState<string>("todos")
   const [categorias, setCategorias] = useState<string[]>([])
-  const [lojas, setLojas] = useState<string[]>([])
 
   useEffect(() => {
     carregarProdutos()
@@ -34,7 +32,7 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
 
   useEffect(() => {
     aplicarFiltros()
-  }, [busca, filtroCategoria, filtroStatus, filtroLoja, produtos])
+  }, [busca, filtroCategoria, filtroStatus, produtos])
 
   const carregarProdutos = async () => {
     try {
@@ -42,12 +40,10 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
       const produtosCarregados = await produtoService.listar()
       setProdutos(produtosCarregados)
       
-      // Extrair categorias e lojas únicas
+      // Extrair categorias únicas
       const categoriasUnicas = [...new Set(produtosCarregados.map(p => p.categoria))].sort()
-      const lojasUnicas = [...new Set(produtosCarregados.map(p => p.loja_id))].sort()
       
       setCategorias(categoriasUnicas)
-      setLojas(lojasUnicas)
     } catch (error) {
       console.error("Erro ao carregar produtos:", error)
     } finally {
@@ -81,10 +77,6 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
       )
     }
 
-    // Filtro de loja
-    if (filtroLoja !== "todos") {
-      filtrados = filtrados.filter(produto => produto.loja_id === filtroLoja)
-    }
 
     setProdutosFiltrados(filtrados)
   }
@@ -93,7 +85,30 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
     setBusca("")
     setFiltroCategoria("todos")
     setFiltroStatus("todos")
-    setFiltroLoja("todos")
+  }
+
+  // Função para agrupar produtos por categoria
+  const agruparPorCategoria = (produtos: Produto[]) => {
+    const agrupados = produtos.reduce((acc, produto) => {
+      const categoria = produto.categoria || "Outros"
+      if (!acc[categoria]) {
+        acc[categoria] = []
+      }
+      acc[categoria].push(produto)
+      return acc
+    }, {} as Record<string, Produto[]>)
+
+    // Ordenar categorias alfabeticamente e produtos dentro de cada categoria
+    const categoriasOrdenadas: Record<string, Produto[]> = {}
+    Object.keys(agrupados)
+      .sort()
+      .forEach(categoria => {
+        categoriasOrdenadas[categoria] = agrupados[categoria].sort((a, b) => 
+          a.nome.localeCompare(b.nome)
+        )
+      })
+
+    return categoriasOrdenadas
   }
 
   const toggleStatus = async (produto: Produto) => {
@@ -150,7 +165,7 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Busca */}
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-[#5F6B6D]" />
@@ -189,20 +204,6 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
                 </SelectContent>
               </Select>
 
-              {/* Loja */}
-              <Select value={filtroLoja} onValueChange={setFiltroLoja}>
-                <SelectTrigger className="border-[#3599B8] focus:border-[#fabd07]">
-                  <SelectValue placeholder="Loja" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas as lojas</SelectItem>
-                  {lojas.map(loja => (
-                    <SelectItem key={loja} value={loja}>
-                      Loja {loja}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <Button
@@ -216,8 +217,8 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
           </CardContent>
         </Card>
 
-        {/* Lista de Produtos */}
-        <div className="grid gap-4">
+        {/* Lista de Produtos Agrupados por Categoria */}
+        <div className="space-y-6">
           {produtosFiltrados.length === 0 ? (
             <Card className="border-2 border-[#C9B07A] shadow-lg">
               <CardContent className="p-8 text-center">
@@ -231,7 +232,32 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
               </CardContent>
             </Card>
           ) : (
-            produtosFiltrados.map((produto) => (
+            Object.entries(agruparPorCategoria(produtosFiltrados)).map(([categoria, produtosDaCategoria]) => (
+              <div key={categoria} className="space-y-4">
+                {/* Cabeçalho da Categoria */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[#4AC5BB] rounded-lg flex items-center justify-center">
+                      <Package className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-[#000000]">{categoria}</h2>
+                      <p className="text-sm text-[#5F6B6D]">
+                        {produtosDaCategoria.length} {produtosDaCategoria.length === 1 ? "produto" : "produtos"}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge 
+                    variant="outline" 
+                    className="border-[#4AC5BB] text-[#4AC5BB] bg-[#4AC5BB]/10"
+                  >
+                    {produtosDaCategoria.filter(p => p.ativo).length} ativos
+                  </Badge>
+                </div>
+
+                {/* Produtos da Categoria */}
+                <div className="grid gap-4">
+                  {produtosDaCategoria.map((produto) => (
               <Card key={produto.id} className="border-2 border-[#3599B8] shadow-lg hover:border-[#fabd07] transition-colors">
                 <CardContent className="p-4">
                   {/* Layout responsivo: stack em mobile, horizontal em desktop */}
@@ -251,14 +277,11 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
                           {/* Informações em stack para mobile */}
                           <div className="space-y-1 md:space-y-0 md:flex md:items-center md:gap-4 text-sm text-[#5F6B6D] mb-2">
                             <div className="flex items-center gap-3">
-                              <span><strong>Categoria:</strong> {produto.categoria}</span>
                               <span><strong>Unidade:</strong> {produto.unidade}</span>
-                            </div>
-                            {produto.cod_item && (
-                              <div className="md:block">
+                              {produto.cod_item && (
                                 <span><strong>Código:</strong> {produto.cod_item}</span>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                           
                           {produto.codigo_barras && (
@@ -277,9 +300,6 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
                             : "bg-[#FB8281] text-white hover:bg-[#FA6B6A]"}
                         >
                           {produto.ativo ? "Ativo" : "Inativo"}
-                        </Badge>
-                        <Badge variant="outline" className="border-[#C9B07A] text-[#C9B07A]">
-                          Loja {produto.loja_id}
                         </Badge>
                       </div>
                     </div>
@@ -310,6 +330,9 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
                   </div>
                 </CardContent>
               </Card>
+                  ))}
+                </div>
+              </div>
             ))
           )}
         </div>
