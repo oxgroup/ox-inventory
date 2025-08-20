@@ -89,6 +89,7 @@ export const SETORES = [
   "Estoque Bebidas", 
   "Prep",
   "Linha",
+  "Vinhos",
   "Delivery"
 ] as const
 

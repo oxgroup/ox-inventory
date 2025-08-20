@@ -18,6 +18,7 @@ const SETORES = [
   "Estoque Bebidas",
   "Prep",
   "Linha",
+  "Vinhos",
   "Delivery",
 ]
 

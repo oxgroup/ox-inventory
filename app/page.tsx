@@ -176,6 +176,13 @@ function DashboardContent() {
           />
           
           <ModuleCard
+            title="🏷️ Produtos"
+            description="Cadastro e gestão de produtos do sistema"
+            icon={<Package className="w-6 h-6" />}
+            href="/produtos"
+          />
+          
+          <ModuleCard
             title="📊 Analytics"
             description="Relatórios, dashboards e análises de dados"
             icon={<BarChart3 className="w-6 h-6" />}
@@ -208,7 +215,7 @@ function DashboardContent() {
               <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-[#5F6B6D] mb-1">Módulos ativos:</p>
-                  <p className="font-semibold text-[#4AC5BB]">1 de 4</p>
+                  <p className="font-semibold text-[#4AC5BB]">3 de 5</p>
                 </div>
                 <div>
                   <p className="text-[#5F6B6D] mb-1">Último acesso:</p>
@@ -225,8 +232,8 @@ function DashboardContent() {
               </div>
               <div className="mt-4 p-3 bg-[#F4DDAE] rounded-lg">
                 <p className="text-xs text-[#5F6B6D]">
-                  💡 <strong>Dica:</strong> O módulo de Inventário está totalmente funcional com 
-                  suporte a código de barras, busca inteligente e modo offline.
+                  💡 <strong>Dica:</strong> Os módulos de Inventário, Requisições e Produtos estão 
+                  funcionais. Gerencie seu catálogo de produtos e faça inventários com código de barras.
                 </p>
               </div>
             </CardContent>

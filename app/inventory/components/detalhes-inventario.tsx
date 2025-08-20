@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { ArrowLeft, Edit, Check, X, Package, CheckCircle, Download } from "lucide-react"
+import { ArrowLeft, Edit, Check, X, Package, CheckCircle, Download, Search, Filter } from "lucide-react"
 import { itemInventarioService, inventarioService } from "../../shared/lib/supabase"
 import { exportService } from "../../shared/lib/export-service"
 
@@ -50,8 +50,9 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
   const [dialogEdicao, setDialogEdicao] = useState(false)
   const [dialogConciliar, setDialogConciliar] = useState(false)
   const [quantidadeFechada, setQuantidadeFechada] = useState("")
-  const [quantidadeEmUso, setQuantidadeEmUso] = useState("")
   const [exportando, setExportando] = useState(false)
+  const [filtroTexto, setFiltroTexto] = useState("")
+  const [itensFiltrados, setItensFiltrados] = useState<any[]>([])
 
   useEffect(() => {
     if (inventario?.id) {
@@ -72,9 +73,25 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
     }
   }
 
+  // Effect para aplicar filtro
   useEffect(() => {
-    // Agrupar itens por subgrupo baseado na categoria do produto
-    const agrupados = itens.reduce((acc, item) => {
+    if (!filtroTexto.trim()) {
+      setItensFiltrados(itens)
+    } else {
+      const filtroLower = filtroTexto.toLowerCase()
+      const filtrados = itens.filter(item => 
+        item.produto_nome.toLowerCase().includes(filtroLower) ||
+        item.produto_categoria?.toLowerCase().includes(filtroLower) ||
+        item.produto_cod_item?.toLowerCase().includes(filtroLower) ||
+        item.observacoes?.toLowerCase().includes(filtroLower)
+      )
+      setItensFiltrados(filtrados)
+    }
+  }, [itens, filtroTexto])
+
+  useEffect(() => {
+    // Agrupar itens filtrados por subgrupo baseado na categoria do produto
+    const agrupados = itensFiltrados.reduce((acc, item) => {
       // Usar a categoria do produto ou uma categoria padrão
       const categoria = item.produto_categoria || "Outros"
       const subgrupo = SUBGRUPOS[categoria] || "Outros"
@@ -95,7 +112,7 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
       })
 
     setItensAgrupados(subgruposOrdenados)
-  }, [itens])
+  }, [itensFiltrados])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -138,28 +155,44 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
     )
   }
 
-  const editarItem = (item: any) => {
+  const abrirDialogEdicao = (item: any) => {
+    if (inventario?.status !== "em_contagem" || !usuario?.permissoes?.includes("editar")) {
+      return
+    }
     setItemEditando(item)
     setQuantidadeFechada(item.quantidade_fechada.toString())
-    setQuantidadeEmUso(item.quantidade_em_uso.toString())
     setDialogEdicao(true)
+  }
+
+  const excluirItem = async (item: any) => {
+    if (!confirm(`Tem certeza que deseja excluir "${item.produto_nome}"?`)) {
+      return
+    }
+
+    try {
+      await itemInventarioService.excluir(item.id)
+      const itensAtualizados = itens.filter(i => i.id !== item.id)
+      setItens(itensAtualizados)
+    } catch (error) {
+      console.error('Erro ao excluir item:', error)
+      alert('Erro ao excluir item. Tente novamente.')
+    }
   }
 
   const salvarEdicao = async () => {
     if (!itemEditando) return
 
     const qtdFechada = Number.parseFloat(quantidadeFechada) || 0
-    const qtdEmUso = Number.parseFloat(quantidadeEmUso) || 0
 
-    if (qtdFechada === 0 && qtdEmUso === 0) {
-      alert("Por favor, informe pelo menos uma quantidade")
+    if (qtdFechada === 0) {
+      alert("Por favor, informe a quantidade")
       return
     }
 
     try {
       const updates = {
         quantidade_fechada: qtdFechada,
-        quantidade_em_uso: qtdEmUso,
+        quantidade_em_uso: itemEditando.quantidade_em_uso, // Mantém valor atual
       }
 
       await itemInventarioService.atualizar(itemEditando.id, updates)
@@ -213,6 +246,18 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
   }
 
   const calcularTotais = () => {
+    return itensFiltrados.reduce(
+      (acc, item) => {
+        acc.totalFechada += item.quantidade_fechada
+        acc.totalEmUso += item.quantidade_em_uso
+        acc.totalItens += 1
+        return acc
+      },
+      { totalFechada: 0, totalEmUso: 0, totalItens: 0 },
+    )
+  }
+
+  const calcularTotaisGerais = () => {
     return itens.reduce(
       (acc, item) => {
         acc.totalFechada += item.quantidade_fechada
@@ -225,6 +270,7 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
   }
 
   const totais = calcularTotais()
+  const totaisGerais = calcularTotaisGerais()
 
   // Função para obter cor do subgrupo
   const getSubgrupoColor = (subgrupo: string) => {
@@ -334,28 +380,57 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
           </div>
         </div>
 
+        {/* Campo de Filtro */}
+        <Card className="border-2 border-[#4AC5BB]">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-[#5F6B6D]" />
+              <Input
+                placeholder="Filtrar produtos (nome, categoria, código, observações...)"
+                value={filtroTexto}
+                onChange={(e) => setFiltroTexto(e.target.value)}
+                className="border-[#3599B8] focus:border-[#fabd07] text-sm"
+              />
+              {filtroTexto && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFiltroTexto("")}
+                  className="text-[#FB8281] hover:bg-[#FB8281]/10 px-2"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            {filtroTexto && (
+              <div className="mt-2 text-xs text-[#5F6B6D]">
+                📊 Mostrando {itensFiltrados.length} de {itens.length} itens
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Resumo Expandido */}
         <Card className="border-2 border-[#3599B8]">
           <CardHeader className="pb-3">
             <CardTitle className="text-[#000000] text-lg flex items-center">
               <Package className="w-5 h-5 mr-2" />
-              Resumo Geral
+              {filtroTexto ? "Resumo Filtrado" : "Resumo Geral"}
+              {filtroTexto && (
+                <Filter className="w-4 h-4 ml-2 text-[#4AC5BB]" />
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Totais Gerais */}
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-2 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-[#fabd07]">{totais.totalItens}</div>
                 <div className="text-xs text-[#5F6B6D]">Itens</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-[#4AC5BB]">{totais.totalFechada.toFixed(1)}</div>
-                <div className="text-xs text-[#5F6B6D]">Qtd. Fechada</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-[#F4D25A]">{totais.totalEmUso.toFixed(1)}</div>
-                <div className="text-xs text-[#5F6B6D]">Qtd. Em Uso</div>
+                <div className="text-xs text-[#5F6B6D]">Quantidade Total</div>
               </div>
             </div>
 
@@ -429,7 +504,31 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
 
         {/* Lista de Itens Agrupados */}
         <div className="space-y-4">
-          {Object.entries(agruparPorCategoria(itens)).map(([categoria, itensDoGrupo]: [string, any[]]) => (
+          {itensFiltrados.length === 0 && !carregando ? (
+            <Card className="border-2 border-[#C9B07A] shadow-lg">
+              <CardContent className="p-8 text-center">
+                <Package className="w-16 h-16 text-[#C9B07A] mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-[#5F6B6D] mb-2">
+                  {filtroTexto ? "Nenhum item encontrado" : "Nenhum item no inventário"}
+                </h3>
+                <p className="text-[#8B8C7E]">
+                  {filtroTexto 
+                    ? "Tente ajustar o filtro ou limpar a busca para ver todos os itens."
+                    : "Este inventário ainda não possui itens adicionados."
+                  }
+                </p>
+                {filtroTexto && (
+                  <Button
+                    onClick={() => setFiltroTexto("")}
+                    className="mt-4 bg-[#4AC5BB] hover:bg-[#3599B8] text-white"
+                  >
+                    Limpar Filtro
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            Object.entries(agruparPorCategoria(itensFiltrados)).map(([categoria, itensDoGrupo]: [string, any[]]) => (
             <Card key={categoria} className="border border-[#C9B07A] shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -448,7 +547,11 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
                     className="bg-white p-3 rounded-lg border border-[#DFBFBF] hover:border-[#C9B07A] transition-colors"
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
+                      <div 
+                        className="flex-1 cursor-pointer" 
+                        onClick={() => abrirDialogEdicao(item)}
+                        title="Clique para editar a quantidade"
+                      >
                         <div className="font-semibold text-[#000000] text-sm flex items-center justify-between">
                           <span>{item.produto_nome}</span>
                           {item.produto_cod_item && (
@@ -458,16 +561,37 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
                           )}
                         </div>
                         <div className="text-xs text-[#5F6B6D] mt-1">
-                          Fechada: {item.quantidade_fechada} {item.produto_unidade}
-                          {item.quantidade_em_uso > 0 && ` | Em uso: ${item.quantidade_em_uso} ${item.produto_unidade}`}
+                          Quantidade: {item.quantidade_fechada} {item.produto_unidade}
                         </div>
+                        {item.observacoes && (
+                          <div className="text-xs text-[#5F6B6D] mt-1 italic">
+                            💬 {item.observacoes}
+                          </div>
+                        )}
                       </div>
+                      
+                      {/* Botão de excluir */}
+                      {inventario?.status === "em_contagem" && usuario?.permissoes?.includes("editar") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            excluirItem(item)
+                          }}
+                          className="text-[#FB8281] hover:bg-[#FB8281]/10 h-8 w-8 p-0"
+                          title="Excluir item"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
-          ))}
+          ))
+          )}
         </div>
 
         {/* Aviso quando conciliado */}
@@ -500,30 +624,17 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
                 <div className="text-sm text-[#5F6B6D]">{itemEditando?.produto_categoria}</div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-semibold text-[#000000] block mb-1">Qtd. Fechada</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={quantidadeFechada}
-                    onChange={(e) => setQuantidadeFechada(e.target.value)}
-                    className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
-                  />
-                  <div className="text-xs text-[#5F6B6D] mt-1">{itemEditando?.produto_unidade}</div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-[#000000] block mb-1">Qtd. Em Uso</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={quantidadeEmUso}
-                    onChange={(e) => setQuantidadeEmUso(e.target.value)}
-                    className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
-                  />
-                  <div className="text-xs text-[#5F6B6D] mt-1">{itemEditando?.produto_unidade}</div>
-                </div>
+              <div>
+                <label className="text-sm font-semibold text-[#000000] block mb-1">Quantidade</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={quantidadeFechada}
+                  onChange={(e) => setQuantidadeFechada(e.target.value)}
+                  className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
+                  placeholder="0.00"
+                />
+                <div className="text-xs text-[#5F6B6D] mt-1">{itemEditando?.produto_unidade}</div>
               </div>
             </div>
             <DialogFooter className="flex-col space-y-2">
@@ -559,13 +670,13 @@ export function DetalhesInventario({ inventario, usuario, onVoltar, onInventario
 
               <div className="bg-[#F4DDAE] p-3 rounded-lg text-sm space-y-1">
                 <div className="text-[#000000]">
-                  <strong>Total de itens:</strong> {totais.totalItens}
+                  <strong>Total de itens:</strong> {totaisGerais.totalItens}
                 </div>
                 <div className="text-[#000000]">
-                  <strong>Quantidade fechada:</strong> {totais.totalFechada.toFixed(1)}
+                  <strong>Quantidade fechada:</strong> {totaisGerais.totalFechada.toFixed(1)}
                 </div>
                 <div className="text-[#000000]">
-                  <strong>Quantidade em uso:</strong> {totais.totalEmUso.toFixed(1)}
+                  <strong>Quantidade em uso:</strong> {totaisGerais.totalEmUso.toFixed(1)}
                 </div>
               </div>
 

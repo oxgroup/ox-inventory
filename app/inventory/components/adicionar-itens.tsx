@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { ArrowLeft, Plus, Search, Package, AlertTriangle, Check, Info, Camera } from "lucide-react"
+import { ArrowLeft, Plus, Search, Package, AlertTriangle, Check, Info, Camera, X } from "lucide-react"
 import { itemInventarioService, inventarioService, produtoService } from "../../shared/lib/supabase"
 import { barcodeService } from "../lib/barcode"
 import { BarcodeScanner } from "./barcode-scanner"
@@ -22,11 +22,14 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
   const [busca, setBusca] = useState("")
   const [produtoSelecionado, setProdutoSelecionado] = useState<any>(null)
   const [quantidadeFechada, setQuantidadeFechada] = useState("")
-  const [quantidadeEmUso, setQuantidadeEmUso] = useState("")
   const [observacoes, setObservacoes] = useState("")
   const [itensInventario, setItensInventario] = useState<any[]>([])
   const [dialogDuplicata, setDialogDuplicata] = useState(false)
   const [itemDuplicado, setItemDuplicado] = useState<any>(null)
+  const [dialogEdicao, setDialogEdicao] = useState(false)
+  const [itemEditando, setItemEditando] = useState<any>(null)
+  const [quantidadeEditada, setQuantidadeEditada] = useState("")
+  const [observacoesEditadas, setObservacoesEditadas] = useState("")
   const [dadosOffline, setDadosOffline] = useState<any>(null)
   const [isOffline, setIsOffline] = useState(false)
   const [carregandoProdutos, setCarregandoProdutos] = useState(false)
@@ -34,6 +37,13 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
   // Estados do scanner de código de barras
   const [scannerAberto, setScannerAberto] = useState(false)
   const [buscandoPorCodigo, setBuscandoPorCodigo] = useState(false)
+  
+  // Estados para vinculação de código de barras
+  const [dialogVinculacao, setDialogVinculacao] = useState(false)
+  const [codigoParaVincular, setCodigoParaVincular] = useState("")
+  const [produtosParaVinculacao, setProdutosParaVinculacao] = useState<any[]>([])
+  const [buscaVinculacao, setBuscaVinculacao] = useState("")
+  const [vinculandoCodigo, setVinculandoCodigo] = useState(false)
   
   // Ref para auto-foco no campo de busca
   const buscaInputRef = useRef<HTMLInputElement>(null)
@@ -169,7 +179,11 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
           }
         }, 100)
       } else {
-        alert(`Produto não encontrado para o código de barras: ${codigoBarras}`)
+        // Abrir modal para vincular código de barras a um produto existente
+        setCodigoParaVincular(codigoBarras)
+        setProdutosParaVinculacao(produtos)
+        setBuscaVinculacao("")
+        setDialogVinculacao(true)
       }
     } catch (error: any) {
       console.error("Erro ao buscar por código de barras:", error)
@@ -178,6 +192,68 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
       setBuscandoPorCodigo(false)
       setScannerAberto(false)
     }
+  }
+
+  // Função para vincular código de barras a um produto
+  const vincularCodigoBarras = async (produto: any) => {
+    try {
+      setVinculandoCodigo(true)
+      
+      // Atualizar o produto no banco de dados com o código de barras
+      await produtoService.atualizar(produto.id, {
+        codigo_barras: codigoParaVincular
+      })
+      
+      // Atualizar o produto localmente
+      const produtoAtualizado = {
+        ...produto,
+        codigo_barras: codigoParaVincular
+      }
+      
+      // Atualizar lista de produtos local
+      const produtosAtualizados = produtos.map(p => 
+        p.id === produto.id ? produtoAtualizado : p
+      )
+      setProdutos(produtosAtualizados)
+      setProdutosFiltrados(produtosAtualizados)
+      
+      // Selecionar o produto vinculado
+      setProdutoSelecionado(produtoAtualizado)
+      setBusca("")
+      
+      // Fechar modal
+      setDialogVinculacao(false)
+      setCodigoParaVincular("")
+      setBuscaVinculacao("")
+      
+      // Auto-foco no campo de quantidade fechada
+      setTimeout(() => {
+        const quantidadeInput = document.querySelector('input[placeholder="0.00"]') as HTMLInputElement
+        if (quantidadeInput) {
+          quantidadeInput.focus()
+        }
+      }, 100)
+      
+    } catch (error: any) {
+      console.error("Erro ao vincular código de barras:", error)
+      alert(error.message || "Erro ao vincular código de barras")
+    } finally {
+      setVinculandoCodigo(false)
+    }
+  }
+
+  // Função para filtrar produtos no modal de vinculação
+  const filtrarProdutosVinculacao = () => {
+    if (!buscaVinculacao.trim()) {
+      return produtos.filter(p => !p.codigo_barras) // Mostrar apenas produtos sem código de barras
+    }
+    
+    const buscaLower = buscaVinculacao.toLowerCase()
+    return produtos.filter(produto => 
+      produto.nome.toLowerCase().includes(buscaLower) ||
+      produto.categoria.toLowerCase().includes(buscaLower) ||
+      produto.cod_item?.toLowerCase().includes(buscaLower)
+    )
   }
 
   useEffect(() => {
@@ -298,10 +374,10 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
 
     // Validar se pelo menos uma quantidade foi informada
     const qtdFechada = Number.parseFloat(quantidadeFechada) || 0
-    const qtdEmUso = Number.parseFloat(quantidadeEmUso) || 0
+    const qtdEmUso = 0 // Valor padrão, campo removido do frontend
 
-    if (qtdFechada === 0 && qtdEmUso === 0) {
-      alert("Por favor, informe pelo menos uma quantidade (fechada ou em uso)")
+    if (qtdFechada === 0) {
+      alert("Por favor, informe a quantidade")
       return
     }
 
@@ -319,12 +395,15 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
 
     if (itemExistente) {
       console.log("Item duplicado encontrado, mostrando dialog")
+      // Buscar todos os itens duplicados do mesmo produto
+      const itensDuplicados = itensInventario.filter(item => item.produto_id === produtoSelecionado.id)
+      
       setItemDuplicado({
         produto: produtoSelecionado,
         quantidadeFechada: qtdFechada,
-        quantidadeEmUso: qtdEmUso,
         duplicataExistente: itemExistente,
         totalDuplicatas: totalDuplicatas,
+        todosItensDuplicados: itensDuplicados,
       })
       setDialogDuplicata(true)
       return
@@ -336,7 +415,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
 
   const inserirItem = async (acao?: "adicionar" | "somar") => {
     const qtdFechada = Number.parseFloat(quantidadeFechada) || 0
-    const qtdEmUso = Number.parseFloat(quantidadeEmUso) || 0
+    const qtdEmUso = 0 // Valor padrão, campo removido do frontend
 
     try {
       if (acao === "somar" && itemDuplicado) {
@@ -344,7 +423,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
         const itemExistente = itemDuplicado.duplicataExistente
         const novasQuantidades = {
           quantidade_fechada: itemExistente.quantidade_fechada + qtdFechada,
-          quantidade_em_uso: itemExistente.quantidade_em_uso + qtdEmUso,
+          quantidade_em_uso: itemExistente.quantidade_em_uso, // Mantém valor atual
         }
 
         await itemInventarioService.atualizar(itemExistente.id, novasQuantidades)
@@ -367,7 +446,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
           produto_categoria: produtoSelecionado.categoria,
           produto_cod_item: produtoSelecionado.cod_item,
           quantidade_fechada: qtdFechada,
-          quantidade_em_uso: qtdEmUso,
+          quantidade_em_uso: 0, // Valor padrão
           observacoes: observacoes.trim() || undefined,
           produto_codigo_barras: produtoSelecionado.codigo_barras,
           data_contagem: new Date().toISOString(),
@@ -453,6 +532,54 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
       acc[categoria].push(item)
       return acc
     }, {} as Record<string, any[]>)
+  }
+
+  const abrirEdicaoItem = (item: any) => {
+    setItemEditando(item)
+    setQuantidadeEditada(item.quantidade_fechada.toString())
+    setObservacoesEditadas(item.observacoes || "")
+    setDialogEdicao(true)
+  }
+
+  const salvarEdicaoItem = async () => {
+    if (!itemEditando) return
+
+    const qtd = Number.parseFloat(quantidadeEditada) || 0
+    if (qtd === 0) {
+      alert("Por favor, informe a quantidade")
+      return
+    }
+
+    try {
+      const updates = {
+        quantidade_fechada: qtd,
+        quantidade_em_uso: itemEditando.quantidade_em_uso, // Mantém valor atual
+        observacoes: observacoesEditadas.trim() || undefined,
+      }
+
+      await itemInventarioService.atualizar(itemEditando.id, updates)
+
+      // Atualizar estado local
+      const itensAtualizados = itensInventario.map((item) => {
+        if (item.id === itemEditando.id) {
+          return { 
+            ...item, 
+            quantidade_fechada: qtd,
+            observacoes: observacoesEditadas.trim() || undefined,
+          }
+        }
+        return item
+      })
+
+      setItensInventario(itensAtualizados)
+      setDialogEdicao(false)
+      setItemEditando(null)
+      setQuantidadeEditada("")
+      setObservacoesEditadas("")
+    } catch (error) {
+      console.error("Erro ao atualizar item:", error)
+      alert("Erro ao atualizar item. Tente novamente.")
+    }
   }
 
   return (
@@ -615,32 +742,17 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-semibold text-[#000000] block mb-1">Qtd. Fechada *</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={quantidadeFechada}
-                    onChange={(e) => setQuantidadeFechada(e.target.value)}
-                    className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
-                  />
-                  <div className="text-xs text-[#5F6B6D] mt-1">{produtoSelecionado.unidade}</div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-[#000000] block mb-1">Qtd. Em Uso</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={quantidadeEmUso}
-                    onChange={(e) => setQuantidadeEmUso(e.target.value)}
-                    className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
-                  />
-                  <div className="text-xs text-[#5F6B6D] mt-1">{produtoSelecionado.unidade}</div>
-                </div>
+              <div>
+                <label className="text-sm font-semibold text-[#000000] block mb-1">Quantidade *</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={quantidadeFechada}
+                  onChange={(e) => setQuantidadeFechada(e.target.value)}
+                  className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
+                />
+                <div className="text-xs text-[#5F6B6D] mt-1">{produtoSelecionado.unidade}</div>
               </div>
 
               <div>
@@ -658,7 +770,6 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                   onClick={() => {
                     setProdutoSelecionado(null)
                     setQuantidadeFechada("")
-                    setQuantidadeEmUso("")
                     setObservacoes("")
                     // Auto-foco no campo de busca
                     setTimeout(() => {
@@ -696,7 +807,11 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                     {(itens as any[]).map((item) => (
                       <div key={item.id} className="bg-white p-3 rounded-lg border border-[#C9B07A]">
                         <div className="flex justify-between items-start">
-                          <div className="flex-1">
+                          <div 
+                            className="flex-1 cursor-pointer" 
+                            onClick={() => abrirEdicaoItem(item)}
+                            title="Clique para editar a quantidade"
+                          >
                             <div className="font-semibold text-[#000000] text-sm flex items-center justify-between">
                               <span>{item.produto_nome}</span>
                               {item.produto_cod_item && (
@@ -706,8 +821,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                               )}
                             </div>
                             <div className="text-xs text-[#5F6B6D] mt-1">
-                              Fechada: {item.quantidade_fechada} {item.produto_unidade}
-                              {item.quantidade_em_uso > 0 && ` | Em uso: ${item.quantidade_em_uso} ${item.produto_unidade}`}
+                              Quantidade: {item.quantidade_fechada} {item.produto_unidade}
                             </div>
                             {item.observacoes && (
                               <div className="text-xs text-[#5F6B6D] mt-1 italic">
@@ -718,8 +832,12 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => removerItem(item.id)}
-                            className="text-[#FB8281] hover:bg-[#FB8281]/10"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removerItem(item.id)
+                            }}
+                            className="text-[#FB8281] hover:bg-[#FB8281]/10 h-8 w-8 p-0"
+                            title="Remover item"
                           >
                             ✕
                           </Button>
@@ -761,7 +879,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
 
         {/* Dialog de Duplicata */}
         <Dialog open={dialogDuplicata} onOpenChange={setDialogDuplicata}>
-          <DialogContent className="max-w-lg w-[95vw] sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-lg w-[95vw] sm:max-w-lg mx-auto max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center text-[#FF9100] text-lg sm:text-xl">
                 <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0" />
@@ -774,20 +892,51 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                 <strong>{itemDuplicado?.totalDuplicatas}</strong> vez(es) neste inventário.
               </p>
 
+              {/* Itens Existentes */}
+              <div className="bg-[#E3F2FD] p-3 rounded-lg border border-[#90CAF9]">
+                <h4 className="text-sm font-semibold text-[#1976D2] mb-2">📦 Itens já contados:</h4>
+                <div className="space-y-2">
+                  {itemDuplicado?.todosItensDuplicados?.map((item: any, index: number) => (
+                    <div key={item.id} className="bg-white p-2 rounded border">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-[#5F6B6D]">Entrada #{index + 1}</span>
+                        <span className="text-sm font-medium text-[#000000]">
+                          {item.quantidade_fechada} {item.produto_unidade}
+                        </span>
+                      </div>
+                      {item.observacoes && (
+                        <div className="text-xs text-[#5F6B6D] mt-1 italic">
+                          💬 {item.observacoes}
+                        </div>
+                      )}
+                      <div className="text-xs text-[#5F6B6D]">
+                        {new Date(item.data_contagem).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 pt-2 border-t border-[#90CAF9] flex justify-between items-center">
+                  <span className="text-sm font-medium text-[#1976D2]">Total Atual:</span>
+                  <span className="text-sm font-bold text-[#1976D2]">
+                    {itemDuplicado?.todosItensDuplicados?.reduce((total: number, item: any) => 
+                      total + item.quantidade_fechada, 0
+                    )} {itemDuplicado?.produto?.unidade}
+                  </span>
+                </div>
+              </div>
+
+              {/* Nova Quantidade */}
               <div className="bg-[#F4DDAE] p-3 rounded-lg text-sm space-y-2">
                 <div className="text-[#000000]">
                   <div className="flex justify-between items-center">
-                    <span><strong>Nova qtd. fechada:</strong></span>
+                    <span><strong>➕ Nova quantidade:</strong></span>
                     <span className="font-medium ml-2">
                       {itemDuplicado?.quantidadeFechada} {itemDuplicado?.produto?.unidade}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-[#000000]">
-                  <div className="flex justify-between items-center">
-                    <span><strong>Nova qtd. em uso:</strong></span>
-                    <span className="font-medium ml-2">
-                      {itemDuplicado?.quantidadeEmUso} {itemDuplicado?.produto?.unidade}
                     </span>
                   </div>
                 </div>
@@ -824,6 +973,164 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                 onClick={() => setDialogDuplicata(false)}
                 className="w-full h-12 border-2 border-[#FB8281] text-[#FB8281] hover:bg-[#FB8281]/10 font-medium rounded-lg"
               >
+                Cancelar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Edição de Item */}
+        <Dialog open={dialogEdicao} onOpenChange={setDialogEdicao}>
+          <DialogContent className="max-w-sm mx-auto">
+            <DialogHeader>
+              <DialogTitle className="text-[#000000]">Editar Item</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-[#F4DDAE] p-3 rounded-lg">
+                <div className="font-semibold text-[#000000] flex items-center justify-between">
+                  <span>{itemEditando?.produto_nome}</span>
+                  {itemEditando?.produto_cod_item && (
+                    <span className="bg-[#8B8C7E] text-white px-2 py-1 rounded text-xs font-mono">
+                      {itemEditando?.produto_cod_item}
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-[#5F6B6D]">{itemEditando?.produto_categoria}</div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-semibold text-[#000000] block mb-1">Quantidade</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={quantidadeEditada}
+                  onChange={(e) => setQuantidadeEditada(e.target.value)}
+                  className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
+                  placeholder="0.00"
+                />
+                <div className="text-xs text-[#5F6B6D] mt-1">{itemEditando?.produto_unidade}</div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-[#000000] block mb-1">Observações (Opcional)</label>
+                <Input
+                  placeholder="Comentários sobre o item..."
+                  value={observacoesEditadas}
+                  onChange={(e) => setObservacoesEditadas(e.target.value)}
+                  className="h-10 border-2 border-[#C9B07A] focus:border-[#fabd07]"
+                />
+              </div>
+            </div>
+            <DialogFooter className="flex-col space-y-2">
+              <Button onClick={salvarEdicaoItem} className="w-full bg-[#4AC5BB] hover:bg-[#3599B8] text-white">
+                <Check className="w-4 h-4 mr-2" />
+                Salvar Alterações
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setDialogEdicao(false)}
+                className="w-full border-[#C9B07A] text-[#000000] hover:bg-[#F4DDAE]"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancelar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Vinculação de Código de Barras */}
+        <Dialog open={dialogVinculacao} onOpenChange={setDialogVinculacao}>
+          <DialogContent className="max-w-2xl mx-auto max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="text-[#000000] flex items-center gap-2">
+                <Camera className="w-5 h-5" />
+                Vincular Código de Barras
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-auto space-y-4">
+              {/* Informações do código */}
+              <div className="bg-[#F4DDAE] p-4 rounded-lg">
+                <p className="text-[#5F6B6D] text-sm mb-2">
+                  <strong>Código de barras escaneado:</strong>
+                </p>
+                <p className="text-[#000000] font-mono text-lg bg-white p-2 rounded border">
+                  {codigoParaVincular}
+                </p>
+                <p className="text-[#8B8C7E] text-xs mt-2">
+                  Este código não está vinculado a nenhum produto. Selecione um produto abaixo para vincular.
+                </p>
+              </div>
+
+              {/* Busca de produtos */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[#000000]">Buscar Produto</label>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-[#5F6B6D]" />
+                  <Input
+                    placeholder="Digite o nome do produto..."
+                    value={buscaVinculacao}
+                    onChange={(e) => setBuscaVinculacao(e.target.value)}
+                    className="pl-10 border-[#3599B8] focus:border-[#fabd07]"
+                  />
+                </div>
+              </div>
+
+              {/* Lista de produtos */}
+              <div className="space-y-2 max-h-64 overflow-auto">
+                {filtrarProdutosVinculacao().map((produto) => (
+                  <div
+                    key={produto.id}
+                    className="border border-[#C9B07A] rounded-lg p-3 hover:bg-[#F4DDAE]/20 cursor-pointer transition-colors"
+                    onClick={() => !vinculandoCodigo && vincularCodigoBarras(produto)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-[#000000] text-sm">{produto.nome}</h4>
+                        <div className="flex items-center gap-3 text-xs text-[#5F6B6D] mt-1">
+                          <span>📁 {produto.categoria}</span>
+                          <span>📏 {produto.unidade}</span>
+                          {produto.cod_item && (
+                            <span className="bg-[#8B8C7E] text-white px-2 py-1 rounded font-mono">
+                              {produto.cod_item}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-[#4AC5BB] hover:bg-[#3599B8] text-white"
+                        disabled={vinculandoCodigo}
+                      >
+                        {vinculandoCodigo ? "Vinculando..." : "Vincular"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {filtrarProdutosVinculacao().length === 0 && (
+                  <div className="text-center py-8 text-[#5F6B6D]">
+                    <Package className="w-12 h-12 mx-auto mb-2 text-[#C9B07A]" />
+                    <p className="text-sm">
+                      {buscaVinculacao.trim() ? "Nenhum produto encontrado" : "Nenhum produto sem código de barras"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDialogVinculacao(false)
+                  setCodigoParaVincular("")
+                  setBuscaVinculacao("")
+                }}
+                className="border-[#8B8C7E] text-[#8B8C7E] hover:bg-[#8B8C7E]/10"
+                disabled={vinculandoCodigo}
+              >
+                <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
             </DialogFooter>

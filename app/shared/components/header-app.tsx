@@ -10,9 +10,11 @@ interface HeaderAppProps {
   usuario: Usuario
   onLogout: () => void
   onGerenciarUsuarios?: () => void
+  titulo?: string
+  subtitulo?: string
 }
 
-export function HeaderApp({ usuario, onLogout, onGerenciarUsuarios }: HeaderAppProps) {
+export function HeaderApp({ usuario, onLogout, onGerenciarUsuarios, titulo, subtitulo }: HeaderAppProps) {
   const handleLogout = async () => {
     try {
       await authService.logout()
@@ -25,18 +27,30 @@ export function HeaderApp({ usuario, onLogout, onGerenciarUsuarios }: HeaderAppP
   const isAdmin = usuario.permissoes?.includes("excluir")
 
   return (
-    <Card className="border-2 border-[#C9B07A] shadow-lg">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-[#fabd07] rounded-full flex items-center justify-center">
-              {isAdmin ? <Crown className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-white" />}
+    <div className="space-y-4">
+      {/* Título e Subtítulo */}
+      {titulo && (
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-[#000000]">{titulo}</h1>
+          {subtitulo && (
+            <p className="text-[#5F6B6D] text-lg mt-2">{subtitulo}</p>
+          )}
+        </div>
+      )}
+      
+      {/* Header com informações do usuário */}
+      <Card className="border-2 border-[#C9B07A] shadow-lg">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-[#fabd07] rounded-full flex items-center justify-center">
+                {isAdmin ? <Crown className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-white" />}
+              </div>
+              <div>
+                <div className="font-semibold text-[#000000] text-sm">{usuario.nome}</div>
+                <div className="text-xs text-[#5F6B6D]">{usuario.loja_nome}</div>
+              </div>
             </div>
-            <div>
-              <div className="font-semibold text-[#000000] text-sm">{usuario.nome}</div>
-              <div className="text-xs text-[#5F6B6D]">{usuario.loja_nome}</div>
-            </div>
-          </div>
           <div className="flex items-center space-x-2">
             <Link href="/">
               <Button
@@ -64,5 +78,6 @@ export function HeaderApp({ usuario, onLogout, onGerenciarUsuarios }: HeaderAppP
         </div>
       </CardContent>
     </Card>
+    </div>
   )
 }
