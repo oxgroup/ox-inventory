@@ -173,85 +173,96 @@ export function DetalhesProduto({ produto, usuario, onVoltar, onProdutoAtualizad
     <div className="min-h-screen bg-gradient-to-br from-[#A9C4E5] to-[#F4DDAE]">
       <div className="container mx-auto p-4 md:p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="space-y-4 mb-6">
+          {/* Botão Voltar */}
+          <div>
             <Button
               onClick={onVoltar}
               variant="outline"
               className="border-[#3599B8] text-[#3599B8] hover:bg-[#3599B8]/10"
               disabled={salvando || excluindo}
+              size="sm"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-[#000000] flex items-center gap-2">
-                📦 {produto.nome}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge 
-                  className={produto.ativo 
-                    ? "bg-[#97C93D] text-white hover:bg-[#7BA82E]" 
-                    : "bg-[#FB8281] text-white hover:bg-[#FA6B6A]"}
-                >
-                  {produto.ativo ? "Ativo" : "Inativo"}
-                </Badge>
-                <Badge variant="outline" className="border-[#C9B07A] text-[#C9B07A]">
-                  {produto.categoria}
-                </Badge>
-              </div>
-            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {!modoEdicao ? (
-              <>
-                <Button
-                  onClick={() => setModoEdicao(true)}
-                  className="bg-[#3599B8] hover:bg-[#2A7A96] text-white"
-                >
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Editar
-                </Button>
-                <Button
-                  onClick={() => setDialogExclusao(true)}
-                  variant="outline"
-                  className="border-[#FB8281] text-[#FB8281] hover:bg-[#FB8281]/10"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Desativar
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  onClick={handleCancelar}
-                  variant="outline"
-                  className="border-[#8B8C7E] text-[#8B8C7E] hover:bg-[#8B8C7E]/10"
-                  disabled={salvando}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleSalvar}
-                  className="bg-[#4AC5BB] hover:bg-[#3A9B94] text-white"
-                  disabled={salvando}
-                >
-                  {salvando ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Salvar
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
+          {/* Título e Info do Produto */}
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#000000] flex items-center gap-2 mb-2">
+              📦 {produto.nome}
+            </h1>
+            
+            {/* Badges */}
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <Badge 
+                className={produto.ativo 
+                  ? "bg-[#97C93D] text-white hover:bg-[#7BA82E]" 
+                  : "bg-[#FB8281] text-white hover:bg-[#FA6B6A]"}
+              >
+                {produto.ativo ? "Ativo" : "Inativo"}
+              </Badge>
+              <Badge variant="outline" className="border-[#C9B07A] text-[#C9B07A]">
+                {produto.categoria}
+              </Badge>
+            </div>
+
+            {/* Botões de Ação - Mobile: Full width, Desktop: Inline */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              {!modoEdicao ? (
+                <>
+                  <Button
+                    onClick={() => setModoEdicao(true)}
+                    className="bg-[#3599B8] hover:bg-[#2A7A96] text-white w-full sm:w-auto"
+                    size="sm"
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Editar
+                  </Button>
+                  <Button
+                    onClick={() => setDialogExclusao(true)}
+                    variant="outline"
+                    className="border-[#FB8281] text-[#FB8281] hover:bg-[#FB8281]/10 w-full sm:w-auto"
+                    size="sm"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Desativar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleCancelar}
+                    variant="outline"
+                    className="border-[#8B8C7E] text-[#8B8C7E] hover:bg-[#8B8C7E]/10 w-full sm:w-auto"
+                    disabled={salvando}
+                    size="sm"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleSalvar}
+                    className="bg-[#4AC5BB] hover:bg-[#3A9B94] text-white w-full sm:w-auto"
+                    disabled={salvando}
+                    size="sm"
+                  >
+                    {salvando ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Salvar
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
