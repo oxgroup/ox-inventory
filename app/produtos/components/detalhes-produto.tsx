@@ -338,7 +338,7 @@ export function DetalhesProduto({ produto, usuario, onVoltar, onProdutoAtualizad
                   {modoEdicao ? (
                     <div className="space-y-2">
                       <Select 
-                        value={formData.categoria} 
+                        value={categoriaNova.trim() || formData.categoria} 
                         onValueChange={(value) => {
                           handleInputChange("categoria", value)
                           setCategoriaNova("")
@@ -346,9 +346,15 @@ export function DetalhesProduto({ produto, usuario, onVoltar, onProdutoAtualizad
                         disabled={salvando}
                       >
                         <SelectTrigger className="border-[#3599B8] focus:border-[#fabd07]">
-                          <SelectValue />
+                          <SelectValue placeholder={formData.categoria || "Selecione uma categoria"} />
                         </SelectTrigger>
                         <SelectContent>
+                          {/* Categoria atual se não estiver na lista */}
+                          {formData.categoria && !CATEGORIAS_SUGERIDAS.includes(formData.categoria) && (
+                            <SelectItem key={formData.categoria} value={formData.categoria}>
+                              {formData.categoria}
+                            </SelectItem>
+                          )}
                           {CATEGORIAS_SUGERIDAS.map(categoria => (
                             <SelectItem key={categoria} value={categoria}>
                               {categoria}
@@ -377,7 +383,7 @@ export function DetalhesProduto({ produto, usuario, onVoltar, onProdutoAtualizad
                   {modoEdicao ? (
                     <div className="space-y-2">
                       <Select 
-                        value={formData.unidade} 
+                        value={unidadeNova.trim() || formData.unidade} 
                         onValueChange={(value) => {
                           handleInputChange("unidade", value)
                           setUnidadeNova("")
@@ -385,9 +391,15 @@ export function DetalhesProduto({ produto, usuario, onVoltar, onProdutoAtualizad
                         disabled={salvando}
                       >
                         <SelectTrigger className="border-[#3599B8] focus:border-[#fabd07]">
-                          <SelectValue />
+                          <SelectValue placeholder={formData.unidade || "Selecione uma unidade"} />
                         </SelectTrigger>
                         <SelectContent>
+                          {/* Unidade atual se não estiver na lista */}
+                          {formData.unidade && !UNIDADES_SUGERIDAS.includes(formData.unidade) && (
+                            <SelectItem key={formData.unidade} value={formData.unidade}>
+                              {formData.unidade}
+                            </SelectItem>
+                          )}
                           {UNIDADES_SUGERIDAS.map(unidade => (
                             <SelectItem key={unidade} value={unidade}>
                               {unidade}
