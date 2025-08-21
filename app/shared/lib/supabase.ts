@@ -100,6 +100,7 @@ export interface Produto {
   loja_id: string
   ativo: boolean
   codigo_barras?: string
+  setor_1?: string
 }
 
 // Serviço de inventário

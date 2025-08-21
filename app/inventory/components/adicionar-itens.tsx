@@ -16,6 +16,29 @@ interface AdicionarItensProps {
   onVoltar: () => void
 }
 
+// Função para mapear setor do inventário para setor_1 do produto
+const mapearSetorParaSetor1 = (setorInventario: string): string => {
+  const setoresCozinha = [
+    "Câmara Congelada", 
+    "Câmara Resfriada", 
+    "Dry Aged", 
+    "Estoque Seco", 
+    "Estoque Limpeza", 
+    "Prep", 
+    "Linha", 
+    "Delivery"
+  ]
+  
+  const setoresBar = ["Estoque Bebidas", "Bar"]
+  
+  if (setoresCozinha.includes(setorInventario)) return "Cozinha"
+  if (setoresBar.includes(setorInventario)) return "Bar"
+  if (setorInventario === "Vinhos") return "Vinhos"
+  if (setorInventario === "Enxoval") return "Enxoval"
+  
+  return "Todos" // fallback para mostrar todos os produtos
+}
+
 export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItensProps) {
   const [produtos, setProdutos] = useState<any[]>([])
   const [produtosFiltrados, setProdutosFiltrados] = useState<any[]>([])
@@ -79,9 +102,20 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
 
   const carregarProdutos = async () => {
     try {
-      const produtosCarregados = await produtoService.listar()
-      setProdutos(produtosCarregados)
-      setProdutosFiltrados(produtosCarregados)
+      const todosProdutos = await produtoService.listar()
+      
+      // Filtrar produtos baseado no setor do inventário
+      const setorFiltro = mapearSetorParaSetor1(inventario.setor)
+      
+      const produtosFiltrados = setorFiltro === "Todos" 
+        ? todosProdutos 
+        : todosProdutos.filter(produto => produto.setor_1 === setorFiltro)
+      
+      console.log(`Setor inventário: ${inventario.setor} → Filtrar por setor_1: ${setorFiltro}`)
+      console.log(`Produtos filtrados: ${produtosFiltrados.length} de ${todosProdutos.length}`)
+      
+      setProdutos(produtosFiltrados)
+      setProdutosFiltrados(produtosFiltrados)
       
       // Carregar produtos para cache de código de barras
       await barcodeService.carregarProdutosParaCache()
@@ -89,54 +123,26 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
       console.error("Erro ao carregar produtos:", error)
       // Fallback para produtos mock se houver erro
       const PRODUTOS_MOCK = [
-        {
-          id: "1",
-          nome: "Carne Bovina - Alcatra",
-          categoria: "Carnes",
-          unidade: "kg",
-          cod_item: "CARNE001",
-          loja_id: "mock",
-        },
-        { id: "2", nome: "Frango - Peito", categoria: "Carnes", unidade: "kg", cod_item: "FRANGO001", loja_id: "mock" },
-        { id: "3", nome: "Salmão - Filé", categoria: "Peixes", unidade: "kg", cod_item: "PEIXE001", loja_id: "mock" },
-        { id: "4", nome: "Batata Inglesa", categoria: "Legumes", unidade: "kg", cod_item: "LEG001", loja_id: "mock" },
-        { id: "5", nome: "Cebola Roxa", categoria: "Legumes", unidade: "kg", cod_item: "LEG003", loja_id: "mock" },
-        {
-          id: "6",
-          nome: "Azeite Extra Virgem",
-          categoria: "Óleos",
-          unidade: "litro",
-          cod_item: "OLEO001",
-          loja_id: "mock",
-        },
-        { id: "7", nome: "Sal Grosso", categoria: "Temperos", unidade: "kg", cod_item: "TEMP001", loja_id: "mock" },
-        {
-          id: "8",
-          nome: "Vinho Tinto Reserva",
-          categoria: "Bebidas",
-          unidade: "garrafa",
-          cod_item: "VINHO001",
-          loja_id: "mock",
-        },
-        {
-          id: "9",
-          nome: "Cerveja Artesanal IPA",
-          categoria: "Bebidas",
-          unidade: "garrafa",
-          cod_item: "CERV001",
-          loja_id: "mock",
-        },
-        {
-          id: "10",
-          nome: "Detergente Neutro",
-          categoria: "Limpeza",
-          unidade: "litro",
-          cod_item: "LIMP001",
-          loja_id: "mock",
-        },
+        { id: "1", nome: "Carne Bovina - Alcatra", categoria: "Carnes", unidade: "kg", cod_item: "CARNE001", loja_id: "mock", setor_1: "Cozinha" },
+        { id: "2", nome: "Frango - Peito", categoria: "Carnes", unidade: "kg", cod_item: "FRANGO001", loja_id: "mock", setor_1: "Cozinha" },
+        { id: "3", nome: "Salmão - Filé", categoria: "Peixes", unidade: "kg", cod_item: "PEIXE001", loja_id: "mock", setor_1: "Cozinha" },
+        { id: "4", nome: "Batata Inglesa", categoria: "Legumes", unidade: "kg", cod_item: "LEG001", loja_id: "mock", setor_1: "Cozinha" },
+        { id: "5", nome: "Cebola Roxa", categoria: "Legumes", unidade: "kg", cod_item: "LEG003", loja_id: "mock", setor_1: "Cozinha" },
+        { id: "6", nome: "Azeite Extra Virgem", categoria: "Óleos", unidade: "litro", cod_item: "OLEO001", loja_id: "mock", setor_1: "Cozinha" },
+        { id: "7", nome: "Sal Grosso", categoria: "Temperos", unidade: "kg", cod_item: "TEMP001", loja_id: "mock", setor_1: "Cozinha" },
+        { id: "8", nome: "Vinho Tinto Reserva", categoria: "Bebidas", unidade: "garrafa", cod_item: "VINHO001", loja_id: "mock", setor_1: "Vinhos" },
+        { id: "9", nome: "Cerveja Artesanal IPA", categoria: "Bebidas", unidade: "garrafa", cod_item: "CERV001", loja_id: "mock", setor_1: "Bar" },
+        { id: "10", nome: "Detergente Neutro", categoria: "Limpeza", unidade: "litro", cod_item: "LIMP001", loja_id: "mock", setor_1: "Cozinha" },
       ]
-      setProdutos(PRODUTOS_MOCK)
-      setProdutosFiltrados(PRODUTOS_MOCK)
+      
+      // Aplicar filtro também no fallback
+      const setorFiltro = mapearSetorParaSetor1(inventario.setor)
+      const produtosMockFiltrados = setorFiltro === "Todos" 
+        ? PRODUTOS_MOCK 
+        : PRODUTOS_MOCK.filter(produto => produto.setor_1 === setorFiltro)
+      
+      setProdutos(produtosMockFiltrados)
+      setProdutosFiltrados(produtosMockFiltrados)
     }
   }
 
@@ -638,6 +644,30 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
             </div>
           </div>
         </div>
+
+        {/* Informação sobre filtro por setor */}
+        <Card className="border border-[#4AC5BB] bg-[#4AC5BB]/10">
+          <CardContent className="p-4">
+            <div className="flex items-center">
+              <Info className="w-5 h-5 text-[#4AC5BB] mr-2 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="text-[#000000] font-medium">
+                  Produtos filtrados por setor: 
+                  <span className="ml-1">
+                    {inventario?.setor === "Vinhos" && "🍷 "}
+                    {["Estoque Bebidas", "Bar"].includes(inventario?.setor) && "🍺 "}
+                    {["Câmara Congelada", "Câmara Resfriada", "Dry Aged", "Estoque Seco", "Estoque Limpeza", "Prep", "Linha", "Delivery"].includes(inventario?.setor) && "🍳 "}
+                    {inventario?.setor === "Enxoval" && "🛏️ "}
+                    {mapearSetorParaSetor1(inventario?.setor)}
+                  </span>
+                </p>
+                <p className="text-[#5F6B6D] text-xs mt-1">
+                  Apenas produtos do setor <strong>{inventario?.setor}</strong> estão disponíveis para este inventário.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Aviso para inventários finalizados */}
         {isInventarioFinalizado() && (

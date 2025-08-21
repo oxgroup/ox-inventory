@@ -59,6 +59,13 @@ const UNIDADES_SUGERIDAS = [
   "cm"
 ]
 
+const SETORES_SUGERIDOS = [
+  "Cozinha",
+  "Bar",
+  "Vinhos",
+  "Enxoval"
+]
+
 export function DetalhesProduto({ produto, usuario, onVoltar, onProdutoAtualizado }: DetalhesProdutoProps) {
   const [modoEdicao, setModoEdicao] = useState(false)
   const [formData, setFormData] = useState<Produto>({...produto})
@@ -421,6 +428,48 @@ export function DetalhesProduto({ produto, usuario, onVoltar, onProdutoAtualizad
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* Setor Principal */}
+              <div className="space-y-2">
+                <Label className="text-[#5F6B6D] font-medium">Setor Principal</Label>
+                {modoEdicao ? (
+                  <Select 
+                    value={formData.setor_1 || "Cozinha"} 
+                    onValueChange={(value) => handleInputChange("setor_1", value)}
+                    disabled={salvando}
+                  >
+                    <SelectTrigger className="border-[#3599B8] focus:border-[#fabd07]">
+                      <SelectValue placeholder={formData.setor_1 || "Selecione o setor"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Setor atual se não estiver na lista */}
+                      {formData.setor_1 && !SETORES_SUGERIDOS.includes(formData.setor_1) && (
+                        <SelectItem key={formData.setor_1} value={formData.setor_1}>
+                          {formData.setor_1}
+                        </SelectItem>
+                      )}
+                      <SelectItem value="Cozinha">🍳 Cozinha</SelectItem>
+                      <SelectItem value="Bar">🍺 Bar</SelectItem>
+                      <SelectItem value="Vinhos">🍷 Vinhos</SelectItem>
+                      <SelectItem value="Enxoval">🛏️ Enxoval</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-[#000000] p-2 bg-gray-50 rounded border">
+                    {produto.setor_1 ? (
+                      <>
+                        {produto.setor_1 === "Cozinha" && "🍳 "}
+                        {produto.setor_1 === "Bar" && "🍺 "}
+                        {produto.setor_1 === "Vinhos" && "🍷 "}
+                        {produto.setor_1 === "Enxoval" && "🛏️ "}
+                        {produto.setor_1}
+                      </>
+                    ) : (
+                      "Não definido"
+                    )}
+                  </p>
+                )}
               </div>
 
               {/* Código de Barras */}

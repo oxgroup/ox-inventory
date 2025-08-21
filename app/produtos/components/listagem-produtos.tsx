@@ -278,6 +278,16 @@ export function ListagemProdutos({ usuario, onVoltar, onEditarProduto, onProduto
                           <div className="space-y-1 md:space-y-0 md:flex md:items-center md:gap-4 text-sm text-[#5F6B6D] mb-2">
                             <div className="flex items-center gap-3">
                               <span><strong>Unidade:</strong> {produto.unidade}</span>
+                              {produto.setor_1 && (
+                                <span>
+                                  <strong>Setor:</strong> 
+                                  {produto.setor_1 === "Cozinha" && " 🍳"}
+                                  {produto.setor_1 === "Bar" && " 🍺"}
+                                  {produto.setor_1 === "Vinhos" && " 🍷"}
+                                  {produto.setor_1 === "Enxoval" && " 🛏️"}
+                                  {" " + produto.setor_1}
+                                </span>
+                              )}
                               {produto.cod_item && (
                                 <span><strong>Código:</strong> {produto.cod_item}</span>
                               )}

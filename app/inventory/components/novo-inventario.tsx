@@ -20,6 +20,7 @@ const SETORES = [
   "Linha",
   "Vinhos",
   "Delivery",
+  "Enxoval",
 ]
 
 interface NovoInventarioProps {

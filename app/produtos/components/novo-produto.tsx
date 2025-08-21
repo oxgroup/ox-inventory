@@ -55,6 +55,13 @@ const UNIDADES_SUGERIDAS = [
   "cm"
 ]
 
+const SETORES_SUGERIDOS = [
+  "Cozinha",
+  "Bar", 
+  "Vinhos",
+  "Enxoval"
+]
+
 export function NovoProduto({ usuario, onVoltar, onProdutoCriado }: NovoProdutoProps) {
   const [formData, setFormData] = useState<Partial<Produto>>({
     nome: "",
@@ -62,6 +69,7 @@ export function NovoProduto({ usuario, onVoltar, onProdutoCriado }: NovoProdutoP
     unidade: "",
     cod_item: "",
     codigo_barras: "",
+    setor_1: "Cozinha",
     loja_id: usuario.loja_id,
     ativo: true
   })
@@ -300,6 +308,31 @@ export function NovoProduto({ usuario, onVoltar, onProdutoCriado }: NovoProdutoP
                       disabled={salvando}
                     />
                   </div>
+                </div>
+
+                {/* Setor Principal */}
+                <div className="space-y-2">
+                  <Label className="text-[#5F6B6D] font-medium">
+                    Setor Principal *
+                  </Label>
+                  <Select 
+                    value={formData.setor_1 || "Cozinha"} 
+                    onValueChange={(value) => handleInputChange("setor_1", value)}
+                    disabled={salvando}
+                  >
+                    <SelectTrigger className="border-[#3599B8] focus:border-[#fabd07]">
+                      <SelectValue placeholder="Selecione o setor principal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cozinha">🍳 Cozinha</SelectItem>
+                      <SelectItem value="Bar">🍺 Bar</SelectItem>
+                      <SelectItem value="Vinhos">🍷 Vinhos</SelectItem>
+                      <SelectItem value="Enxoval">🛏️ Enxoval</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-[#8B8C7E]">
+                    💡 Define em qual setor este produto será usado principalmente
+                  </p>
                 </div>
 
                 {/* Código de Barras */}
