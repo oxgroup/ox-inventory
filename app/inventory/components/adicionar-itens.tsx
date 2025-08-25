@@ -380,7 +380,6 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
 
     // Validar se pelo menos uma quantidade foi informada
     const qtdFechada = Number.parseFloat(quantidadeFechada) || 0
-    const qtdEmUso = 0 // Valor padrão, campo removido do frontend
 
     if (qtdFechada === 0) {
       alert("Por favor, informe a quantidade")
@@ -421,7 +420,6 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
 
   const inserirItem = async (acao?: "adicionar" | "somar") => {
     const qtdFechada = Number.parseFloat(quantidadeFechada) || 0
-    const qtdEmUso = 0 // Valor padrão, campo removido do frontend
 
     try {
       if (acao === "somar" && itemDuplicado) {
@@ -429,7 +427,6 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
         const itemExistente = itemDuplicado.duplicataExistente
         const novasQuantidades = {
           quantidade_fechada: itemExistente.quantidade_fechada + qtdFechada,
-          quantidade_em_uso: itemExistente.quantidade_em_uso, // Mantém valor atual
         }
 
         await itemInventarioService.atualizar(itemExistente.id, novasQuantidades)
@@ -452,7 +449,6 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
           produto_categoria: produtoSelecionado.categoria,
           produto_cod_item: produtoSelecionado.cod_item,
           quantidade_fechada: qtdFechada,
-          quantidade_em_uso: 0, // Valor padrão
           observacoes: observacoes.trim() || undefined,
           produto_codigo_barras: produtoSelecionado.codigo_barras,
           data_contagem: new Date().toISOString(),
@@ -465,7 +461,6 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
       // Limpar formulário
       setProdutoSelecionado(null)
       setQuantidadeFechada("")
-      setQuantidadeEmUso("")
       setObservacoes("")
       setBusca("")
       setDialogDuplicata(false)
@@ -559,7 +554,6 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
     try {
       const updates = {
         quantidade_fechada: qtd,
-        quantidade_em_uso: itemEditando.quantidade_em_uso, // Mantém valor atual
         observacoes: observacoesEditadas.trim() || undefined,
       }
 
