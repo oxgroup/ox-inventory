@@ -5,29 +5,29 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, FileText, Calendar, User, Package, Calculator, Edit, Trash2 } from "lucide-react"
-import { fichasTecnicasService, type FichaTecnica, type ItemFichaTecnica } from "../../shared/lib/fichas-tecnicas-service"
+import { pratosService, type Prato, type FichaTecnica } from "../../shared/lib/fichas-tecnicas-service"
 import type { Usuario } from "../../shared/lib/auth"
 
 interface DetalhesFichaProps {
-  ficha: FichaTecnica
+  prato: Prato
   usuario: Usuario
   onVoltar: () => void
   onAtualizar: () => void
 }
 
-export function DetalhesFicha({ ficha: fichaInicial, usuario, onVoltar, onAtualizar }: DetalhesFichaProps) {
-  const [ficha, setFicha] = useState<FichaTecnica & { itens_ficha_tecnica: ItemFichaTecnica[] }>(fichaInicial as any)
+export function DetalhesFicha({ prato: pratoInicial, usuario, onVoltar, onAtualizar }: DetalhesFichaProps) {
+  const [prato, setPrato] = useState<Prato & { fichas_tecnicas: FichaTecnica[] }>(pratoInicial as any)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     carregarDetalhesCompletos()
-  }, [fichaInicial.id])
+  }, [pratoInicial.id])
 
   const carregarDetalhesCompletos = async () => {
     setLoading(true)
     try {
-      const fichaCOmpleta = await fichasTecnicasService.obter(fichaInicial.id)
-      setFicha(fichaCOmpleta)
+      const pratoCompleto = await pratosService.obter(pratoInicial.id)
+      setPrato(pratoCompleto)
     } catch (error) {
       console.error("Erro ao carregar detalhes:", error)
     } finally {
@@ -52,33 +52,33 @@ export function DetalhesFicha({ ficha: fichaInicial, usuario, onVoltar, onAtuali
     })
   }
 
-  const podeEditar = usuario.permissoes?.includes("editar") || usuario.permissoes?.includes("excluir") || ficha.usuario_id === usuario.id
-  const podeExcluir = usuario.permissoes?.includes("excluir") || ficha.usuario_id === usuario.id
+  const podeEditar = usuario.permissoes?.includes("editar") || usuario.permissoes?.includes("excluir") || prato.usuario_id === usuario.id
+  const podeExcluir = usuario.permissoes?.includes("excluir") || prato.usuario_id === usuario.id
 
   const calcularTotais = () => {
-    if (!ficha.itens_ficha_tecnica) return { itens: 0, grupos: 0 }
+    if (!prato.fichas_tecnicas) return { ingredientes: 0, grupos: 0 }
     
-    const grupos = new Set(ficha.itens_ficha_tecnica.map(item => item.id_grupo).filter(Boolean))
+    const grupos = new Set(prato.fichas_tecnicas.map(ingrediente => ingrediente.id_grupo).filter(Boolean))
     
     return {
-      itens: ficha.itens_ficha_tecnica.length,
+      ingredientes: prato.fichas_tecnicas.length,
       grupos: grupos.size
     }
   }
 
-  const agruparItensPorGrupo = () => {
-    if (!ficha.itens_ficha_tecnica) return {}
+  const agruparIngredientesPorGrupo = () => {
+    if (!prato.fichas_tecnicas) return {}
     
-    return ficha.itens_ficha_tecnica.reduce((acc, item) => {
-      const grupo = item.id_grupo || 'Sem Grupo'
+    return prato.fichas_tecnicas.reduce((acc, ingrediente) => {
+      const grupo = ingrediente.id_grupo || 'Sem Grupo'
       if (!acc[grupo]) acc[grupo] = []
-      acc[grupo].push(item)
+      acc[grupo].push(ingrediente)
       return acc
-    }, {} as Record<string, ItemFichaTecnica[]>)
+    }, {} as Record<string, FichaTecnica[]>)
   }
 
   const totais = calcularTotais()
-  const itensAgrupados = agruparItensPorGrupo()
+  const ingredientesAgrupados = agruparIngredientesPorGrupo()
 
   if (loading) {
     return (

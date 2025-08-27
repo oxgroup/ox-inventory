@@ -5,48 +5,49 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Search, FileText, Calendar, User, Eye, Plus } from "lucide-react"
-import { fichasTecnicasService, type FichaTecnica } from "../../shared/lib/fichas-tecnicas-service"
+import { pratosService, type Prato } from "../../shared/lib/fichas-tecnicas-service"
 import type { Usuario } from "../../shared/lib/auth"
 
 interface ListagemFichasProps {
   usuario: Usuario
   onVoltar: () => void
-  onVerDetalhes: (ficha: FichaTecnica) => void
+  onVerDetalhes: (prato: Prato) => void
   onAtualizar: () => void
 }
 
 export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }: ListagemFichasProps) {
-  const [fichas, setFichas] = useState<FichaTecnica[]>([])
+  const [pratos, setPratos] = useState<Prato[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [filteredFichas, setFilteredFichas] = useState<FichaTecnica[]>([])
+  const [filteredPratos, setFilteredPratos] = useState<Prato[]>([])
 
   useEffect(() => {
-    carregarFichas()
+    carregarPratos()
   }, [usuario])
 
   useEffect(() => {
-    // Filtrar fichas baseado no termo de busca
+    // Filtrar pratos baseado no termo de busca
     if (searchTerm.trim() === "") {
-      setFilteredFichas(fichas)
+      setFilteredPratos(pratos)
     } else {
       const term = searchTerm.toLowerCase()
-      const filtered = fichas.filter(ficha => 
-        ficha.item.toLowerCase().includes(term) ||
-        ficha.usuario?.nome.toLowerCase().includes(term) ||
-        ficha.observacoes?.toLowerCase().includes(term)
+      const filtered = pratos.filter(prato => 
+        prato.nome.toLowerCase().includes(term) ||
+        prato.categoria?.toLowerCase().includes(term) ||
+        prato.usuario?.nome.toLowerCase().includes(term) ||
+        prato.descricao?.toLowerCase().includes(term)
       )
-      setFilteredFichas(filtered)
+      setFilteredPratos(filtered)
     }
-  }, [fichas, searchTerm])
+  }, [pratos, searchTerm])
 
-  const carregarFichas = async () => {
+  const carregarPratos = async () => {
     setLoading(true)
     try {
-      const dados = await fichasTecnicasService.listar(usuario.loja_id)
-      setFichas(dados)
+      const dados = await pratosService.listar(usuario.loja_id)
+      setPratos(dados)
     } catch (error) {
-      console.error("Erro ao carregar fichas:", error)
+      console.error("Erro ao carregar pratos:", error)
     } finally {
       setLoading(false)
     }
@@ -130,12 +131,12 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
 
         {/* Lista de Fichas */}
         <div className="space-y-3">
-          {filteredFichas.length === 0 ? (
+          {filteredPratos.length === 0 ? (
             <Card className="border-2 border-[#DFBFBF] shadow-lg">
               <CardContent className="p-6 text-center">
                 <FileText className="w-12 h-12 text-[#8B8C7E] mx-auto mb-4" />
                 <p className="text-[#5F6B6D] mb-4">
-                  {searchTerm ? "Nenhuma ficha encontrada com esses termos." : "Nenhuma ficha técnica cadastrada."}
+                  {searchTerm ? "Nenhum prato encontrado com esses termos." : "Nenhum prato cadastrado."}
                 </p>
                 {!searchTerm && (
                   <Button
@@ -143,22 +144,22 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
                     className="bg-[#fabd07] hover:bg-[#b58821] text-white"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Criar Primeira Ficha
+                    Criar Primeiro Prato
                   </Button>
                 )}
               </CardContent>
             </Card>
           ) : (
-            filteredFichas.map((ficha) => (
-              <Card key={ficha.id} className="border-2 border-[#fabd07] hover:border-[#b58821] shadow-lg transition-colors">
+            filteredPratos.map((prato) => (
+              <Card key={prato.id} className="border-2 border-[#fabd07] hover:border-[#b58821] shadow-lg transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-[#000000] text-lg flex items-center justify-between">
                     <span className="flex items-center">
                       <FileText className="w-5 h-5 mr-3 text-[#fabd07]" />
-                      {ficha.item}
+                      {prato.nome}
                     </span>
                     <Button
-                      onClick={() => onVerDetalhes(ficha)}
+                      onClick={() => onVerDetalhes(prato)}
                       size="sm"
                       className="bg-[#3599B8] hover:bg-[#4AC5BB] text-white"
                     >
@@ -170,20 +171,26 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center text-[#5F6B6D]">
                       <User className="w-4 h-4 mr-2" />
-                      <span>Criado por: <strong>{ficha.usuario?.nome || 'N/A'}</strong></span>
+                      <span>Criado por: <strong>{prato.usuario?.nome || 'N/A'}</strong></span>
                     </div>
                     <div className="flex items-center text-[#5F6B6D]">
                       <Calendar className="w-4 h-4 mr-2" />
-                      <span>Data: <strong>{formatarData(ficha.created_at)}</strong></span>
+                      <span>Data: <strong>{formatarData(prato.created_at)}</strong></span>
                     </div>
-                    {ficha.total_itens && ficha.total_itens > 0 && (
+                    {prato.categoria && (
+                      <div className="flex items-center text-[#5F6B6D]">
+                        <Package className="w-4 h-4 mr-2" />
+                        <span>Categoria: <strong>{prato.categoria}</strong></span>
+                      </div>
+                    )}
+                    {prato.total_ingredientes && prato.total_ingredientes > 0 && (
                       <div className="flex items-center justify-between pt-2">
                         <span className="bg-[#4AC5BB] text-white px-2 py-1 rounded text-xs">
-                          {ficha.total_itens} {ficha.total_itens === 1 ? 'item' : 'itens'}
+                          {prato.total_ingredientes} {prato.total_ingredientes === 1 ? 'ingrediente' : 'ingredientes'}
                         </span>
-                        {ficha.observacoes && (
+                        {prato.descricao && (
                           <span className="text-xs text-[#8B8C7E] max-w-32 truncate">
-                            {ficha.observacoes}
+                            {prato.descricao}
                           </span>
                         )}
                       </div>
@@ -199,10 +206,10 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
         <Card className="border-2 border-[#C9B07A] shadow-lg">
           <CardContent className="p-4 text-center">
             <p className="text-[#5F6B6D] text-sm mb-2">
-              Mostrando {filteredFichas.length} de {fichas.length} fichas
+              Mostrando {filteredPratos.length} de {pratos.length} pratos
             </p>
             <Button
-              onClick={carregarFichas}
+              onClick={carregarPratos}
               variant="outline"
               size="sm"
               className="border-[#3599B8] text-[#3599B8] hover:bg-[#3599B8]/10"
