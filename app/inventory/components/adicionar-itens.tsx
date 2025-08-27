@@ -25,7 +25,10 @@ const mapearSetorParaSetor1 = (setorInventario: string): string => {
     "Estoque Seco", 
     "Estoque Limpeza", 
     "Prep", 
-    "Linha", 
+    "Fogão",
+    "Parrilla",
+    "Garde/Sobremesa",
+    "Fritadeira", 
     "Delivery"
   ]
   
@@ -650,7 +653,7 @@ export function AdicionarItens({ inventario, usuario, onVoltar }: AdicionarItens
                   <span className="ml-1">
                     {inventario?.setor === "Vinhos" && "🍷 "}
                     {["Estoque Bebidas", "Bar"].includes(inventario?.setor) && "🍺 "}
-                    {["Câmara Congelada", "Câmara Resfriada", "Dry Aged", "Estoque Seco", "Estoque Limpeza", "Prep", "Linha", "Delivery"].includes(inventario?.setor) && "🍳 "}
+                    {["Câmara Congelada", "Câmara Resfriada", "Dry Aged", "Estoque Seco", "Estoque Limpeza", "Prep", "Linha","Fogão","Garde/Sobremesa","Fritadeira","Parrilla", "Delivery"].includes(inventario?.setor) && "🍳 "}
                     {inventario?.setor === "Enxoval" && "🛏️ "}
                     {mapearSetorParaSetor1(inventario?.setor)}
                   </span>
