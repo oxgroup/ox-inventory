@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Package, BarChart3, Users, Settings, ArrowRight, ClipboardList } from "lucide-react"
+import { Package, BarChart3, Users, Settings, ArrowRight, ClipboardList, FileText } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { authService, type Usuario } from "./shared/lib/auth"
@@ -183,6 +183,13 @@ function DashboardContent() {
           />
           
           <ModuleCard
+            title="📋 Fichas Técnicas"
+            description="Sistema de Fichas Técnicas de Produção com ingredientes e quantidades"
+            icon={<FileText className="w-6 h-6" />}
+            href="/fichas-tecnicas"
+          />
+          
+          <ModuleCard
             title="📊 Analytics"
             description="Relatórios, dashboards e análises de dados"
             icon={<BarChart3 className="w-6 h-6" />}
@@ -215,7 +222,7 @@ function DashboardContent() {
               <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-[#5F6B6D] mb-1">Módulos ativos:</p>
-                  <p className="font-semibold text-[#4AC5BB]">3 de 5</p>
+                  <p className="font-semibold text-[#4AC5BB]">4 de 6</p>
                 </div>
                 <div>
                   <p className="text-[#5F6B6D] mb-1">Último acesso:</p>
@@ -232,8 +239,8 @@ function DashboardContent() {
               </div>
               <div className="mt-4 p-3 bg-[#F4DDAE] rounded-lg">
                 <p className="text-xs text-[#5F6B6D]">
-                  💡 <strong>Dica:</strong> Os módulos de Inventário, Requisições e Produtos estão 
-                  funcionais. Gerencie seu catálogo de produtos e faça inventários com código de barras.
+                  💡 <strong>Dica:</strong> Os módulos de Inventário, Requisições, Produtos e Fichas Técnicas estão 
+                  funcionais. Crie fichas técnicas detalhadas com ingredientes e quantidades para sua produção.
                 </p>
               </div>
             </CardContent>
