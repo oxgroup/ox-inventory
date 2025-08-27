@@ -1,12 +1,13 @@
 import { supabase } from "./supabase"
 
-// Types para fichas técnicas
-export interface FichaTecnica {
+// Types para a nova estrutura de fichas técnicas
+export interface Prato {
   id: string
-  item: string
+  nome: string
+  descricao?: string
+  categoria?: string
   usuario_id: string
   loja_id: string
-  observacoes?: string
   ativo: boolean
   created_at: string
   updated_at: string
@@ -19,17 +20,17 @@ export interface FichaTecnica {
     nome: string
     codigo: string
   }
-  itens_ficha_tecnica?: ItemFichaTecnica[]
+  fichas_tecnicas?: FichaTecnica[]
   // Contadores calculados
-  total_itens?: number
+  total_ingredientes?: number
   custo_total?: number
 }
 
-export interface ItemFichaTecnica {
+export interface FichaTecnica {
   id: string
-  ficha_tecnica_id: string
+  prato_id: string
+  item: string // Nome do prato (duplicado para compatibilidade)
   insumo: string
-  produto_id?: string
   qtd: number
   quebra: number
   unidade: string
@@ -41,6 +42,7 @@ export interface ItemFichaTecnica {
   seq: number
   qtd_lote: number
   id_cliente_queops?: string
+  produto_id?: string
   created_at: string
   updated_at: string
   // Dados do produto
@@ -52,17 +54,17 @@ export interface ItemFichaTecnica {
   qtd_total_calculada?: number
 }
 
-export interface NovaFichaTecnica {
-  item: string
+export interface NovoPrato {
+  nome: string
+  descricao?: string
+  categoria?: string
   usuario_id: string
   loja_id: string
-  observacoes?: string
-  itens: NovoItemFichaTecnica[]
+  ingredientes: NovaFichaTecnica[]
 }
 
-export interface NovoItemFichaTecnica {
+export interface NovaFichaTecnica {
   insumo: string
-  produto_id?: string
   qtd: number
   quebra?: number
   unidade: string
@@ -74,6 +76,7 @@ export interface NovoItemFichaTecnica {
   seq?: number
   qtd_lote?: number
   id_cliente_queops?: string
+  produto_id?: string
 }
 
 // Função utilitária para retry de operações
@@ -101,24 +104,24 @@ async function withRetry<T>(
   throw lastError
 }
 
-// Serviço de fichas técnicas
-export const fichasTecnicasService = {
-  // Listar fichas técnicas da loja
+// Serviço de pratos (produtos com fichas técnicas)
+export const pratosService = {
+  // Listar pratos da loja
   async listar(lojaId: string) {
     return withRetry(async () => {
       const { data, error } = await supabase
-        .from("fichas_tecnicas")
+        .from("pratos")
         .select(`
           *,
-          usuarios!fichas_tecnicas_usuario_id_fkey (
+          usuarios!pratos_usuario_id_fkey (
             nome,
             email
           ),
-          lojas!fichas_tecnicas_loja_id_fkey (
+          lojas!pratos_loja_id_fkey (
             nome,
             codigo
           ),
-          itens_ficha_tecnica (*)
+          fichas_tecnicas (*)
         `)
         .eq("loja_id", lojaId)
         .eq("ativo", true)
@@ -126,82 +129,84 @@ export const fichasTecnicasService = {
 
       if (error) throw error
       
-      // Calcular estatísticas para cada ficha
-      const fichasComStats = data?.map(ficha => ({
-        ...ficha,
-        usuario: ficha.usuarios,
-        loja: ficha.lojas,
-        total_itens: ficha.itens_ficha_tecnica?.length || 0,
+      // Calcular estatísticas para cada prato
+      const pratosComStats = data?.map(prato => ({
+        ...prato,
+        usuario: prato.usuarios,
+        loja: prato.lojas,
+        total_ingredientes: prato.fichas_tecnicas?.length || 0,
         custo_total: 0 // TODO: calcular baseado nos produtos
       })) || []
 
-      return fichasComStats as FichaTecnica[]
+      return pratosComStats as Prato[]
     })
   },
 
-  // Criar nova ficha técnica
-  async criar(novaFicha: NovaFichaTecnica) {
+  // Criar novo prato com ingredientes
+  async criar(novoPrato: NovoPrato) {
     return withRetry(async () => {
-      // Criar ficha técnica principal
-      const { data: ficha, error: fichaError } = await supabase
-        .from("fichas_tecnicas")
+      // Criar prato principal
+      const { data: prato, error: pratoError } = await supabase
+        .from("pratos")
         .insert({
-          item: novaFicha.item,
-          usuario_id: novaFicha.usuario_id,
-          loja_id: novaFicha.loja_id,
-          observacoes: novaFicha.observacoes
+          nome: novoPrato.nome,
+          descricao: novoPrato.descricao,
+          categoria: novoPrato.categoria,
+          usuario_id: novoPrato.usuario_id,
+          loja_id: novoPrato.loja_id
         })
         .select()
         .single()
 
-      if (fichaError) throw fichaError
+      if (pratoError) throw pratoError
 
-      // Criar itens da ficha técnica
-      if (novaFicha.itens.length > 0) {
-        const itensParaInserir = novaFicha.itens.map((item, index) => ({
-          ficha_tecnica_id: ficha.id,
-          insumo: item.insumo,
-          produto_id: item.produto_id,
-          qtd: item.qtd,
-          quebra: item.quebra || 0,
-          unidade: item.unidade,
-          codigo_empresa: item.codigo_empresa,
-          qtd_receita: item.qtd_receita || 0,
-          fator_correcao: item.fator_correcao || 1,
-          obs_item_ft: item.obs_item_ft,
-          id_grupo: item.id_grupo,
-          seq: item.seq || index + 1,
-          qtd_lote: item.qtd_lote || 0,
-          id_cliente_queops: item.id_cliente_queops
+      // Criar ingredientes (fichas técnicas)
+      if (novoPrato.ingredientes.length > 0) {
+        const ingredientesParaInserir = novoPrato.ingredientes.map((ingrediente, index) => ({
+          prato_id: prato.id,
+          item: novoPrato.nome, // Nome do prato
+          insumo: ingrediente.insumo,
+          qtd: ingrediente.qtd,
+          quebra: ingrediente.quebra || 0,
+          unidade: ingrediente.unidade,
+          codigo_empresa: ingrediente.codigo_empresa,
+          qtd_receita: ingrediente.qtd_receita || 0,
+          fator_correcao: ingrediente.fator_correcao || 1,
+          obs_item_ft: ingrediente.obs_item_ft,
+          id_grupo: ingrediente.id_grupo,
+          seq: ingrediente.seq || index + 1,
+          qtd_lote: ingrediente.qtd_lote || 0,
+          id_cliente_queops: ingrediente.id_cliente_queops,
+          produto_id: ingrediente.produto_id
         }))
 
-        const { error: itensError } = await supabase
-          .from("itens_ficha_tecnica")
-          .insert(itensParaInserir)
+        const { error: ingredientesError } = await supabase
+          .from("fichas_tecnicas")
+          .insert(ingredientesParaInserir)
 
-        if (itensError) throw itensError
+        if (ingredientesError) throw ingredientesError
       }
 
-      return ficha
+      return prato
     })
   },
 
-  // Obter ficha técnica por ID
+  // Obter prato por ID com ingredientes
   async obter(id: string) {
     return withRetry(async () => {
       const { data, error } = await supabase
-        .from("fichas_tecnicas")
+        .from("pratos")
         .select(`
           *,
-          usuarios!fichas_tecnicas_usuario_id_fkey (
+          usuarios!pratos_usuario_id_fkey (
             nome,
             email
           ),
-          lojas!fichas_tecnicas_loja_id_fkey (
+          lojas!pratos_loja_id_fkey (
             nome,
             codigo
           ),
-          itens_ficha_tecnica (
+          fichas_tecnicas (
             *,
             produtos (
               nome,
@@ -217,32 +222,33 @@ export const fichasTecnicasService = {
       if (error) throw error
 
       // Processar dados relacionais e calcular valores
-      const fichaCompleta = {
+      const pratoCompleto = {
         ...data,
         usuario: data.usuarios,
         loja: data.lojas,
-        itens_ficha_tecnica: data.itens_ficha_tecnica?.map((item: any) => ({
-          ...item,
-          produto_nome: item.produtos?.nome,
-          produto_categoria: item.produtos?.categoria,
-          produto_cod_item: item.produtos?.cod_item,
-          produto_codigo_barras: item.produtos?.codigo_barras,
-          qtd_total_calculada: item.qtd * (1 + item.quebra / 100) * item.fator_correcao
+        fichas_tecnicas: data.fichas_tecnicas?.map((ingrediente: any) => ({
+          ...ingrediente,
+          produto_nome: ingrediente.produtos?.nome,
+          produto_categoria: ingrediente.produtos?.categoria,
+          produto_cod_item: ingrediente.produtos?.cod_item,
+          produto_codigo_barras: ingrediente.produtos?.codigo_barras,
+          qtd_total_calculada: ingrediente.qtd * (1 + ingrediente.quebra / 100) * ingrediente.fator_correcao
         })).sort((a: any, b: any) => a.seq - b.seq) || []
       }
 
-      return fichaCompleta as FichaTecnica & { itens_ficha_tecnica: ItemFichaTecnica[] }
+      return pratoCompleto as Prato & { fichas_tecnicas: FichaTecnica[] }
     })
   },
 
-  // Atualizar ficha técnica
-  async atualizar(id: string, updates: Partial<FichaTecnica>) {
+  // Atualizar prato
+  async atualizar(id: string, updates: Partial<Prato>) {
     return withRetry(async () => {
       const { data, error } = await supabase
-        .from("fichas_tecnicas")
+        .from("pratos")
         .update({
-          item: updates.item,
-          observacoes: updates.observacoes
+          nome: updates.nome,
+          descricao: updates.descricao,
+          categoria: updates.categoria
         })
         .eq("id", id)
         .select()
@@ -253,11 +259,11 @@ export const fichasTecnicasService = {
     })
   },
 
-  // Excluir ficha técnica (soft delete)
+  // Excluir prato (soft delete)
   async excluir(id: string) {
     return withRetry(async () => {
       const { error } = await supabase
-        .from("fichas_tecnicas")
+        .from("pratos")
         .update({ ativo: false })
         .eq("id", id)
 
@@ -269,7 +275,7 @@ export const fichasTecnicasService = {
   async obterEstatisticas(lojaId: string, usuarioId?: string) {
     return withRetry(async () => {
       let query = supabase
-        .from("fichas_tecnicas")
+        .from("pratos")
         .select("id, created_at, usuario_id")
         .eq("loja_id", lojaId)
         .eq("ativo", true)
@@ -279,9 +285,9 @@ export const fichasTecnicasService = {
       if (error) throw error
 
       const total = data?.length || 0
-      const minhas = usuarioId ? data?.filter(f => f.usuario_id === usuarioId).length || 0 : 0
-      const esteMes = data?.filter(f => {
-        const created = new Date(f.created_at)
+      const minhas = usuarioId ? data?.filter(p => p.usuario_id === usuarioId).length || 0 : 0
+      const esteMes = data?.filter(p => {
+        const created = new Date(p.created_at)
         const now = new Date()
         return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
       }).length || 0
@@ -296,27 +302,13 @@ export const fichasTecnicasService = {
   }
 }
 
-// Serviço de itens de ficha técnica
-export const itensFichaTecnicaService = {
-  // Adicionar item à ficha técnica
-  async adicionar(item: NovoItemFichaTecnica & { ficha_tecnica_id: string }) {
+// Serviço de fichas técnicas (ingredientes) - CRUD direto na tabela fichas_tecnicas
+export const fichasTecnicasService = {
+  // Listar ingredientes de um prato
+  async listarPorPrato(pratoId: string) {
     return withRetry(async () => {
       const { data, error } = await supabase
-        .from("itens_ficha_tecnica")
-        .insert(item)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    })
-  },
-
-  // Listar itens de uma ficha técnica
-  async listarPorFicha(fichaTecnicaId: string) {
-    return withRetry(async () => {
-      const { data, error } = await supabase
-        .from("itens_ficha_tecnica")
+        .from("fichas_tecnicas")
         .select(`
           *,
           produtos (
@@ -326,30 +318,44 @@ export const itensFichaTecnicaService = {
             codigo_barras
           )
         `)
-        .eq("ficha_tecnica_id", fichaTecnicaId)
+        .eq("prato_id", pratoId)
         .order("seq")
 
       if (error) throw error
 
       // Processar dados relacionais e cálculos
-      const itensProcessados = data?.map(item => ({
-        ...item,
-        produto_nome: item.produtos?.nome,
-        produto_categoria: item.produtos?.categoria,
-        produto_cod_item: item.produtos?.cod_item,
-        produto_codigo_barras: item.produtos?.codigo_barras,
-        qtd_total_calculada: item.qtd * (1 + item.quebra / 100) * item.fator_correcao
+      const ingredientesProcessados = data?.map(ingrediente => ({
+        ...ingrediente,
+        produto_nome: ingrediente.produtos?.nome,
+        produto_categoria: ingrediente.produtos?.categoria,
+        produto_cod_item: ingrediente.produtos?.cod_item,
+        produto_codigo_barras: ingrediente.produtos?.codigo_barras,
+        qtd_total_calculada: ingrediente.qtd * (1 + ingrediente.quebra / 100) * ingrediente.fator_correcao
       })) || []
 
-      return itensProcessados as ItemFichaTecnica[]
+      return ingredientesProcessados as FichaTecnica[]
     })
   },
 
-  // Atualizar item
-  async atualizar(id: string, updates: Partial<ItemFichaTecnica>) {
+  // Adicionar ingrediente a um prato
+  async adicionar(ingrediente: NovaFichaTecnica & { prato_id: string, item: string }) {
     return withRetry(async () => {
       const { data, error } = await supabase
-        .from("itens_ficha_tecnica")
+        .from("fichas_tecnicas")
+        .insert(ingrediente)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    })
+  },
+
+  // Atualizar ingrediente
+  async atualizar(id: string, updates: Partial<FichaTecnica>) {
+    return withRetry(async () => {
+      const { data, error } = await supabase
+        .from("fichas_tecnicas")
         .update(updates)
         .eq("id", id)
         .select()
@@ -360,11 +366,11 @@ export const itensFichaTecnicaService = {
     })
   },
 
-  // Excluir item
+  // Excluir ingrediente
   async excluir(id: string) {
     return withRetry(async () => {
       const { error } = await supabase
-        .from("itens_ficha_tecnica")
+        .from("fichas_tecnicas")
         .delete()
         .eq("id", id)
 
@@ -372,14 +378,14 @@ export const itensFichaTecnicaService = {
     })
   },
 
-  // Reordenar itens
-  async reordenar(itens: { id: string, seq: number }[]) {
+  // Reordenar ingredientes
+  async reordenar(ingredientes: { id: string, seq: number }[]) {
     return withRetry(async () => {
-      const updates = itens.map(item => 
+      const updates = ingredientes.map(ingrediente => 
         supabase
-          .from("itens_ficha_tecnica")
-          .update({ seq: item.seq })
-          .eq("id", item.id)
+          .from("fichas_tecnicas")
+          .update({ seq: ingrediente.seq })
+          .eq("id", ingrediente.id)
       )
 
       const results = await Promise.all(updates)
@@ -387,6 +393,26 @@ export const itensFichaTecnicaService = {
       for (const result of results) {
         if (result.error) throw result.error
       }
+    })
+  },
+
+  // Buscar por ingrediente específico
+  async buscarPorInsumo(insumo: string, lojaId: string) {
+    return withRetry(async () => {
+      const { data, error } = await supabase
+        .from("fichas_tecnicas")
+        .select(`
+          *,
+          pratos!fichas_tecnicas_prato_id_fkey (
+            nome,
+            categoria
+          )
+        `)
+        .ilike("insumo", `%${insumo}%`)
+        .eq("pratos.loja_id", lojaId)
+
+      if (error) throw error
+      return data || []
     })
   }
 }

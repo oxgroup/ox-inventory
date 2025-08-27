@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, Plus, X, Search, Package, Calculator } from "lucide-react"
-import { fichasTecnicasService, type NovaFichaTecnica, type NovoItemFichaTecnica } from "../../shared/lib/fichas-tecnicas-service"
+import { pratosService, type NovoPrato, type NovaFichaTecnica } from "../../shared/lib/fichas-tecnicas-service"
 import { produtoService, type Produto } from "../../shared/lib/supabase"
 import type { Usuario } from "../../shared/lib/auth"
 
@@ -18,7 +18,7 @@ interface NovaFichaProps {
   onSalvar: () => void
 }
 
-interface ItemFormulario extends NovoItemFichaTecnica {
+interface IngredienteFormulario extends NovaFichaTecnica {
   tempId: string
 }
 
@@ -27,15 +27,16 @@ export function NovaFicha({ usuario, onVoltar, onSalvar }: NovaFichaProps) {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loadingProdutos, setLoadingProdutos] = useState(false)
   
-  // Dados da ficha
-  const [item, setItem] = useState("")
-  const [observacoes, setObservacoes] = useState("")
+  // Dados do prato
+  const [nome, setNome] = useState("")
+  const [descricao, setDescricao] = useState("")
+  const [categoria, setCategoria] = useState("")
   
-  // Itens da ficha
-  const [itens, setItens] = useState<ItemFormulario[]>([])
+  // Ingredientes do prato
+  const [ingredientes, setIngredientes] = useState<IngredienteFormulario[]>([])
   
-  // Formulário de novo item
-  const [novoItem, setNovoItem] = useState<ItemFormulario>({
+  // Formulário de novo ingrediente
+  const [novoIngrediente, setNovoIngrediente] = useState<IngredienteFormulario>({
     tempId: '',
     insumo: '',
     produto_id: '',

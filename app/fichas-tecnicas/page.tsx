@@ -12,14 +12,14 @@ import { HeaderApp } from "../shared/components/header-app"
 import { ErrorBoundary } from "../shared/components/error-boundary"
 import { ClientOnly } from "../shared/components/client-only"
 import { useAuth } from "../shared/hooks/useAuth"
-import { fichasTecnicasService, type FichaTecnica } from "../shared/lib/fichas-tecnicas-service"
+import { pratosService, type Prato } from "../shared/lib/fichas-tecnicas-service"
 import type { Usuario } from "../shared/lib/auth"
 
 type TelaAtiva = "home" | "listagem" | "detalhes"
 
 export default function FichasTecnicasPage() {
   const [telaAtiva, setTelaAtiva] = useState<TelaAtiva>("home")
-  const [fichaAtiva, setFichaAtiva] = useState<FichaTecnica | null>(null)
+  const [pratoAtivo, setPratoAtivo] = useState<Prato | null>(null)
   const { usuario, loading, login, logout } = useAuth()
   const router = useRouter()
   const [estatisticas, setEstatisticas] = useState<{
@@ -44,7 +44,7 @@ export default function FichasTecnicasPage() {
     if (!usuario) return
     
     try {
-      const stats = await fichasTecnicasService.obterEstatisticas(
+      const stats = await pratosService.obterEstatisticas(
         usuario.loja_id,
         usuario.id
       )
@@ -87,8 +87,8 @@ export default function FichasTecnicasPage() {
           <ListagemFichas
             usuario={usuario}
             onVoltar={() => setTelaAtiva("home")}
-            onVerDetalhes={(ficha) => {
-              setFichaAtiva(ficha)
+            onVerDetalhes={(prato) => {
+              setPratoAtivo(prato)
               setTelaAtiva("detalhes")
             }}
             onAtualizar={handleFichaAtualizada}
@@ -97,7 +97,7 @@ export default function FichasTecnicasPage() {
       case "detalhes":
         return (
           <DetalhesFicha
-            ficha={fichaAtiva!}
+            prato={pratoAtivo!}
             usuario={usuario}
             onVoltar={() => setTelaAtiva("listagem")}
             onAtualizar={handleFichaAtualizada}
