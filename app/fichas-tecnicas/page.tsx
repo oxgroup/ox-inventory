@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, List, FileText, Users, TrendingUp, Search } from "lucide-react"
 import { ListagemFichas } from "./components/listagem-fichas"
 import { DetalhesFicha } from "./components/detalhes-ficha"
+import { EditarFicha } from "./components/editar-ficha"
 import { Login } from "../auth/components/login"
 import { HeaderApp } from "../shared/components/header-app"
 import { ErrorBoundary } from "../shared/components/error-boundary"
@@ -15,7 +16,7 @@ import { useAuth } from "../shared/hooks/useAuth"
 import { pratosService, type Prato } from "../shared/lib/fichas-tecnicas-service"
 import type { Usuario } from "../shared/lib/auth"
 
-type TelaAtiva = "home" | "listagem" | "detalhes"
+type TelaAtiva = "home" | "listagem" | "detalhes" | "editar"
 
 export default function FichasTecnicasPage() {
   const [telaAtiva, setTelaAtiva] = useState<TelaAtiva>("home")
@@ -101,6 +102,19 @@ export default function FichasTecnicasPage() {
             usuario={usuario}
             onVoltar={() => setTelaAtiva("listagem")}
             onAtualizar={handleFichaAtualizada}
+            onEditar={() => setTelaAtiva("editar")}
+          />
+        )
+      case "editar":
+        return (
+          <EditarFicha
+            prato={pratoAtivo!}
+            usuario={usuario}
+            onVoltar={() => setTelaAtiva("detalhes")}
+            onSalvar={() => {
+              handleFichaAtualizada()
+              setTelaAtiva("detalhes")
+            }}
           />
         )
       default:

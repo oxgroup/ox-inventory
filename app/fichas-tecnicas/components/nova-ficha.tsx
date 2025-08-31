@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save, Plus, X, Search, Package, Calculator } from "lucide-react"
-import { pratosService, type NovoPrato, type NovaFichaTecnica } from "../../shared/lib/fichas-tecnicas-service"
-import { produtoService, type Produto } from "../../shared/lib/supabase"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Save, Plus, X, Search, Package, Calculator, BookOpen, Settings } from "lucide-react"
+import { pratosService, type NovoPrato, type NovaFichaTecnica, type FotoPreparoEtapa } from "../../shared/lib/fichas-tecnicas-service"
+import { UploadFotos } from "./upload-fotos"
+import { IngredienteCompostoComponent } from "./ingrediente-composto"
+import { SeletorSetores } from "./seletor-setores"
 import type { Usuario } from "../../shared/lib/auth"
 
 interface NovaFichaProps {
@@ -24,8 +27,6 @@ interface IngredienteFormulario extends NovaFichaTecnica {
 
 export function NovaFicha({ usuario, onVoltar, onSalvar }: NovaFichaProps) {
   const [loading, setLoading] = useState(false)
-  const [produtos, setProdutos] = useState<Produto[]>([])
-  const [loadingProdutos, setLoadingProdutos] = useState(false)
   
   // Dados do prato
   const [nome, setNome] = useState("")
@@ -35,91 +36,33 @@ export function NovaFicha({ usuario, onVoltar, onSalvar }: NovaFichaProps) {
   // Ingredientes do prato
   const [ingredientes, setIngredientes] = useState<IngredienteFormulario[]>([])
   
-  // Formulário de novo ingrediente
-  const [novoIngrediente, setNovoIngrediente] = useState<IngredienteFormulario>({
-    tempId: '',
-    insumo: '',
-    produto_id: '',
-    qtd: 0,
-    quebra: 0,
-    unidade: 'Un',
-    codigo_empresa: '',
-    qtd_receita: 0,
-    fator_correcao: 1,
-    obs_item_ft: '',
-    id_grupo: '',
-    seq: 1,
-    qtd_lote: 0,
-    id_cliente_queops: ''
-  })
   
-  const [mostrarFormItem, setMostrarFormItem] = useState(false)
-  const [buscaProduto, setBuscaProduto] = useState("")
+  // Dados do prato (nome e descrição)
+  const [item, setItem] = useState("")
+  const [observacoes, setObservacoes] = useState("")
+  const [modoPreparoPrato, setModoPreparoPrato] = useState("")
+  const [fotoPratoFinal, setFotoPratoFinal] = useState("")
+  const [fotosPreparoEtapas, setFotosPreparoEtapas] = useState<FotoPreparoEtapa[]>([])
+  const [podeSerInsumo, setPodeSerInsumo] = useState(false)
+  const [setores, setSetores] = useState<string[]>([])
 
   const unidades = [
     'Un', 'Kg', 'g', 'L', 'ml', 'dz', 'cx', 'pct', 'm', 'cm'
   ]
 
-  useEffect(() => {
-    carregarProdutos()
-  }, [])
-
-  const carregarProdutos = async () => {
-    setLoadingProdutos(true)
-    try {
-      const dados = await produtoService.listar()
-      setProdutos(dados)
-    } catch (error) {
-      console.error("Erro ao carregar produtos:", error)
-    } finally {
-      setLoadingProdutos(false)
-    }
-  }
-
-  const produtosFiltrados = produtos.filter(p => 
-    !buscaProduto || 
-    p.nome.toLowerCase().includes(buscaProduto.toLowerCase()) ||
-    p.cod_item?.toLowerCase().includes(buscaProduto.toLowerCase())
-  )
-
-  const adicionarItem = () => {
-    if (!novoItem.insumo || !novoItem.unidade || novoItem.qtd <= 0) {
-      alert("Preencha pelo menos: Insumo, Quantidade e Unidade")
-      return
-    }
-
-    const item: ItemFormulario = {
-      ...novoItem,
-      tempId: Date.now().toString(),
-      seq: itens.length + 1
-    }
-
-    setItens([...itens, item])
-    
-    // Reset form
-    setNovoItem({
-      tempId: '',
-      insumo: '',
-      produto_id: '',
-      qtd: 0,
-      quebra: 0,
-      unidade: 'Un',
-      codigo_empresa: '',
-      qtd_receita: 0,
-      fator_correcao: 1,
-      obs_item_ft: '',
-      id_grupo: '',
-      seq: itens.length + 2,
-      qtd_lote: 0,
-      id_cliente_queops: ''
-    })
-    
-    setBuscaProduto("")
-    setMostrarFormItem(false)
-  }
 
   const removerItem = (tempId: string) => {
-    setItens(itens.filter(item => item.tempId !== tempId))
+    setIngredientes(ingredientes.filter(item => item.tempId !== tempId))
+  }
+
+  const adicionarIngredienteComposto = (ingrediente: NovaFichaTecnica) => {
+    const novoItem: IngredienteFormulario = {
+      ...ingrediente,
+      tempId: Date.now().toString(),
+      seq: ingredientes.length + 1
+    }
+    
+    setIngredientes([...ingredientes, novoItem])
   }
 
   const calcularQuantidadeTotal = (qtd: number, quebra: number, fatorCorrecao: number) => {
@@ -132,7 +75,7 @@ export function NovaFicha({ usuario, onVoltar, onSalvar }: NovaFichaProps) {
       return
     }
 
-    if (itens.length === 0) {
+    if (ingredientes.length === 0) {
       alert("Adicione pelo menos um item à ficha técnica")
       return
     }
@@ -140,15 +83,21 @@ export function NovaFicha({ usuario, onVoltar, onSalvar }: NovaFichaProps) {
     setLoading(true)
     
     try {
-      const novaFicha: NovaFichaTecnica = {
-        item: item.trim(),
+      const novoPrato: NovoPrato = {
+        nome: item.trim(),
+        descricao: observacoes.trim() || undefined,
+        categoria: categoria.trim(),
+        modo_preparo: modoPreparoPrato.trim() || undefined,
+        foto_prato_final: fotoPratoFinal || undefined,
+        fotos_preparo: fotosPreparoEtapas.length > 0 ? fotosPreparoEtapas : undefined,
+        pode_ser_insumo: podeSerInsumo,
+        setores: setores,
         usuario_id: usuario.id,
         loja_id: usuario.loja_id,
-        observacoes: observacoes.trim() || undefined,
-        itens: itens.map(({ tempId, ...item }) => item)
+        ingredientes: ingredientes.map(({ tempId, ...ingrediente }) => ingrediente)
       }
 
-      await fichasTecnicasService.criar(novaFicha)
+      await pratosService.criar(novoPrato)
       onSalvar()
     } catch (error) {
       console.error("Erro ao salvar ficha:", error)
@@ -213,45 +162,104 @@ export function NovaFicha({ usuario, onVoltar, onSalvar }: NovaFichaProps) {
                 disabled={loading}
               />
             </div>
+            <div>
+              <Label htmlFor="modo-preparo" className="text-[#5F6B6D] font-medium">Modo de Preparo</Label>
+              <Textarea
+                id="modo-preparo"
+                placeholder="Descreva o passo-a-passo para preparar o prato..."
+                value={modoPreparoPrato}
+                onChange={(e) => setModoPreparoPrato(e.target.value)}
+                className="border-[#DFBFBF] focus:border-[#fabd07] resize-none"
+                rows={4}
+                disabled={loading}
+              />
+            </div>
+            
+            {/* Setorização */}
+            <div>
+              <Label className="text-[#5F6B6D] font-medium">Setores de Utilização</Label>
+              <div className="mt-1">
+                <SeletorSetores
+                  setoresSelecionados={setores}
+                  onSetoresChange={setSetores}
+                  disabled={loading}
+                  placeholder="Selecione os setores onde esta ficha será utilizada..."
+                />
+              </div>
+              <p className="text-xs text-[#5F6B6D] mt-1">
+                Selecione em quais setores esta ficha técnica será utilizada. Isso ajudará na organização e filtragem por área.
+              </p>
+            </div>
+
+            {/* Configurações avançadas */}
+            <div className="flex items-center space-x-2 p-3 bg-[#4AC5BB]/5 border border-[#4AC5BB]/20 rounded-lg">
+              <Checkbox
+                id="pode-ser-insumo"
+                checked={podeSerInsumo}
+                onCheckedChange={(checked) => setPodeSerInsumo(checked === true)}
+                disabled={loading}
+              />
+              <div className="flex items-center">
+                <Settings className="w-4 h-4 text-[#4AC5BB] mr-2" />
+                <Label htmlFor="pode-ser-insumo" className="text-sm text-[#000000] cursor-pointer">
+                  Este prato pode ser usado como ingrediente em outras fichas técnicas
+                </Label>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Lista de Itens */}
+        {/* Upload de Fotos */}
+        <UploadFotos
+          fotoPratoFinal={fotoPratoFinal}
+          fotosPreparoEtapas={fotosPreparoEtapas}
+          onFotoPratoFinalChange={setFotoPratoFinal}
+          onFotosPreparoChange={setFotosPreparoEtapas}
+          usuarioId={usuario.id}
+          disabled={loading}
+        />
+
+        {/* Lista de Ingredientes */}
         <Card className="border-2 border-[#3599B8] shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="text-[#000000] text-lg flex items-center justify-between">
-              <span>Itens da Ficha ({itens.length})</span>
-              {!mostrarFormItem && (
-                <Button
-                  onClick={() => setMostrarFormItem(true)}
-                  size="sm"
-                  className="bg-[#fabd07] hover:bg-[#b58821] text-white"
-                  disabled={loading}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              )}
+              <span>Itens da Ficha ({ingredientes.length})</span>
+              {/* Botão para ingredientes compostos */}
+              <IngredienteCompostoComponent 
+                usuario={usuario}
+                onSelect={adicionarIngredienteComposto}
+                disabled={loading}
+              />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Lista de itens adicionados */}
-            {itens.map((item, index) => {
-              const produto = produtos.find(p => p.id === item.produto_id)
+            {/* Lista de ingredientes adicionados */}
+            {ingredientes.map((item, index) => {
               const qtdTotal = calcularQuantidadeTotal(item.qtd, item.quebra || 0, item.fator_correcao || 1)
               
               return (
                 <div key={item.tempId} className="border border-[#DFBFBF] rounded-lg p-3 bg-white/50">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="font-semibold text-[#000000] text-sm">{item.insumo}</p>
-                      {produto && (
-                        <p className="text-xs text-[#3599B8] mt-1">📦 {produto.nome}</p>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-[#000000] text-sm">{item.insumo}</p>
+                        {item.ficha_tecnica_ref_id ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-[#4AC5BB]/10 text-[#4AC5BB] border border-[#4AC5BB]/20">
+                            <BookOpen className="w-3 h-3 mr-1" />
+                            Ficha Técnica
+                          </span>
+                        ) : item.produto_id ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-[#fabd07]/10 text-[#fabd07] border border-[#fabd07]/20">
+                            <Package className="w-3 h-3 mr-1" />
+                            Produto
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-[#5F6B6D]">
                         <span className="font-bold text-[#fabd07]">
                           {formatarQuantidade(item.qtd)} {item.unidade}
                         </span>
-                        {(item.quebra > 0 || item.fator_correcao !== 1) && (
+                        {((item.quebra || 0) > 0 || (item.fator_correcao || 1) !== 1) && (
                           <span className="text-[#4AC5BB]">
                             <Calculator className="w-3 h-3 inline mr-1" />
                             {formatarQuantidade(qtdTotal)}
@@ -278,163 +286,11 @@ export function NovaFicha({ usuario, onVoltar, onSalvar }: NovaFichaProps) {
               )
             })}
 
-            {/* Formulário de novo item */}
-            {mostrarFormItem && (
-              <Card className="border border-[#fabd07] bg-[#F4DDAE]/30">
-                <CardContent className="p-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-[#000000] text-sm">Novo Item</h4>
-                    <Button
-                      onClick={() => setMostrarFormItem(false)}
-                      size="sm"
-                      variant="ghost"
-                      className="text-[#5F6B6D] hover:bg-white/20"
-                      disabled={loading}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <div>
-                    <Label className="text-[#5F6B6D] text-xs">Nome do Insumo *</Label>
-                    <Input
-                      placeholder="Ex: Carne Bovina, Queijo Cheddar..."
-                      value={novoItem.insumo}
-                      onChange={(e) => setNovoItem({...novoItem, insumo: e.target.value})}
-                      className="text-sm"
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-[#5F6B6D] text-xs">Quantidade *</Label>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        placeholder="0"
-                        value={novoItem.qtd || ''}
-                        onChange={(e) => setNovoItem({...novoItem, qtd: parseFloat(e.target.value) || 0})}
-                        className="text-sm"
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[#5F6B6D] text-xs">Unidade *</Label>
-                      <Select 
-                        value={novoItem.unidade} 
-                        onValueChange={(value) => setNovoItem({...novoItem, unidade: value})}
-                        disabled={loading}
-                      >
-                        <SelectTrigger className="text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {unidades.map(unidade => (
-                            <SelectItem key={unidade} value={unidade}>{unidade}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-[#5F6B6D] text-xs">Quebra (%)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        placeholder="0"
-                        value={novoItem.quebra || ''}
-                        onChange={(e) => setNovoItem({...novoItem, quebra: parseFloat(e.target.value) || 0})}
-                        className="text-sm"
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[#5F6B6D] text-xs">Fator Correção</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="1"
-                        value={novoItem.fator_correcao || ''}
-                        onChange={(e) => setNovoItem({...novoItem, fator_correcao: parseFloat(e.target.value) || 1})}
-                        className="text-sm"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-[#5F6B6D] text-xs">Grupo</Label>
-                    <Input
-                      placeholder="Ex: Proteínas, Vegetais, Temperos..."
-                      value={novoItem.id_grupo || ''}
-                      onChange={(e) => setNovoItem({...novoItem, id_grupo: e.target.value})}
-                      className="text-sm"
-                      disabled={loading}
-                    />
-                  </div>
-
-                  {/* Busca de produto */}
-                  <div>
-                    <Label className="text-[#5F6B6D] text-xs">Vincular Produto (opcional)</Label>
-                    <div className="space-y-2">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#5F6B6D] w-4 h-4" />
-                        <Input
-                          placeholder="Buscar produto..."
-                          value={buscaProduto}
-                          onChange={(e) => setBuscaProduto(e.target.value)}
-                          className="pl-9 text-sm"
-                          disabled={loading || loadingProdutos}
-                        />
-                      </div>
-                      
-                      {buscaProduto && (
-                        <div className="max-h-32 overflow-y-auto space-y-1 border border-[#DFBFBF] rounded bg-white p-2">
-                          {loadingProdutos ? (
-                            <p className="text-center text-xs text-[#5F6B6D]">Carregando...</p>
-                          ) : produtosFiltrados.length === 0 ? (
-                            <p className="text-center text-xs text-[#5F6B6D]">Nenhum produto encontrado</p>
-                          ) : (
-                            produtosFiltrados.slice(0, 5).map(produto => (
-                              <button
-                                key={produto.id}
-                                onClick={() => {
-                                  setNovoItem({...novoItem, produto_id: produto.id})
-                                  setBuscaProduto(produto.nome)
-                                }}
-                                className="w-full text-left p-2 hover:bg-[#F4DDAE]/50 rounded text-xs"
-                                disabled={loading}
-                              >
-                                <p className="font-medium text-[#000000]">{produto.nome}</p>
-                                <p className="text-[#5F6B6D]">{produto.categoria} - {produto.unidade}</p>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={adicionarItem}
-                    className="w-full bg-[#4AC5BB] hover:bg-[#3599B8] text-white text-sm"
-                    disabled={loading}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Item
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {itens.length === 0 && !mostrarFormItem && (
+            {ingredientes.length === 0 && (
               <div className="text-center py-6 text-[#5F6B6D]">
                 <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Nenhum item adicionado ainda.</p>
-                <p className="text-xs">Clique no botão + para adicionar itens.</p>
+                <p className="text-xs">Clique no botão "Adicionar Ingrediente" para começar.</p>
               </div>
             )}
           </CardContent>
@@ -453,7 +309,7 @@ export function NovaFicha({ usuario, onVoltar, onSalvar }: NovaFichaProps) {
           <Button
             onClick={salvarFicha}
             className="flex-1 bg-[#fabd07] hover:bg-[#b58821] text-white"
-            disabled={loading || !item.trim() || itens.length === 0}
+            disabled={loading || !item.trim() || ingredientes.length === 0}
           >
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

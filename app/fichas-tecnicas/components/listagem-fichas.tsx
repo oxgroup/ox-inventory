@@ -4,8 +4,10 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Search, FileText, Calendar, User, Eye, Plus } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ArrowLeft, Search, FileText, Calendar, Eye, Plus, Package, MapPin } from "lucide-react"
 import { pratosService, type Prato } from "../../shared/lib/fichas-tecnicas-service"
+import { SETORES_NOMES, getSetorEmoji } from "../../shared/lib/setores"
 import type { Usuario } from "../../shared/lib/auth"
 
 interface ListagemFichasProps {
@@ -19,6 +21,7 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
   const [pratos, setPratos] = useState<Prato[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [setorSelecionado, setSetorSelecionado] = useState<string>("Todos")
   const [filteredPratos, setFilteredPratos] = useState<Prato[]>([])
 
   useEffect(() => {
@@ -26,39 +29,62 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
   }, [usuario])
 
   useEffect(() => {
-    // Filtrar pratos baseado no termo de busca
-    if (searchTerm.trim() === "") {
+    // Filtrar pratos baseado no termo de busca e setor selecionado
+    if (searchTerm.trim() === "" && setorSelecionado === "Todos") {
       setFilteredPratos(pratos)
     } else {
       const term = searchTerm.toLowerCase()
-      const filtered = pratos.filter(prato => 
-        prato.nome.toLowerCase().includes(term) ||
-        prato.categoria?.toLowerCase().includes(term) ||
-        prato.usuario?.nome.toLowerCase().includes(term) ||
-        prato.descricao?.toLowerCase().includes(term)
-      )
+      const filtered = pratos.filter(prato => {
+        // Filtro por termo de busca
+        const matchesSearch = searchTerm.trim() === "" || 
+          prato.nome.toLowerCase().includes(term) ||
+          prato.categoria?.toLowerCase().includes(term) ||
+          prato.descricao?.toLowerCase().includes(term)
+        
+        // Filtro por setor
+        const matchesSetor = setorSelecionado === "Todos" || 
+          (prato.setores && prato.setores.includes(setorSelecionado))
+        
+        return matchesSearch && matchesSetor
+      })
+      
       setFilteredPratos(filtered)
     }
-  }, [pratos, searchTerm])
+  }, [pratos, searchTerm, setorSelecionado])
 
   const carregarPratos = async () => {
+    console.log('🔍 Carregando pratos...')
     setLoading(true)
     try {
-      const dados = await pratosService.listar(usuario.loja_id)
+      console.log('📊 Fazendo chamada para pratosService.listar...')
+      
+      const dados = await pratosService.listar(usuario.loja_id, setorSelecionado === "Todos" ? undefined : setorSelecionado)
+      
+      console.log('✅ Dados recebidos:', dados.length, 'pratos')
+      console.log('📋 Primeiro prato:', dados[0])
+      
       setPratos(dados)
+      console.log('🏁 Carregamento concluído com sucesso')
     } catch (error) {
-      console.error("Erro ao carregar pratos:", error)
+      console.error('❌ Erro ao carregar pratos:', error)
+      alert('Erro ao carregar fichas técnicas. Tente novamente.')
     } finally {
+      console.log('🔄 Definindo loading como false')
       setLoading(false)
     }
   }
 
-  const formatarData = (dataISO: string) => {
-    return new Date(dataISO).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
+  const formatarData = (dataISO: string | undefined) => {
+    if (!dataISO) return 'Data não informada'
+    try {
+      return new Date(dataISO).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    } catch (error) {
+      return 'Data inválida'
+    }
   }
 
   if (loading) {
@@ -92,9 +118,10 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
           <div className="w-16"></div>
         </div>
 
-        {/* Busca */}
+        {/* Busca e Filtros */}
         <Card className="border-2 border-[#fabd07] shadow-lg">
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-3">
+            {/* Busca */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#5F6B6D] w-4 h-4" />
               <Input
@@ -104,6 +131,31 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
                 className="pl-10 border-[#DFBFBF] focus:border-[#fabd07]"
               />
             </div>
+            
+            {/* Filtro por Setor */}
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#5F6B6D] w-4 h-4" />
+              <Select value={setorSelecionado} onValueChange={setSetorSelecionado}>
+                <SelectTrigger className="pl-10 border-[#DFBFBF] focus:border-[#4AC5BB]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">
+                    <span className="flex items-center">
+                      📋 Todos os setores
+                    </span>
+                  </SelectItem>
+                  {SETORES_NOMES.map((setor) => (
+                    <SelectItem key={setor} value={setor}>
+                      <span className="flex items-center">
+                        <span className="mr-2">{getSetorEmoji(setor)}</span>
+                        {setor}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
@@ -112,16 +164,16 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
           <CardContent className="p-4">
             <div className="flex justify-between items-center text-center">
               <div>
-                <div className="text-lg font-bold text-[#fabd07]">{fichas.length}</div>
+                <div className="text-lg font-bold text-[#fabd07]">{pratos.length}</div>
                 <div className="text-xs text-[#5F6B6D]">Total</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-[#4AC5BB]">{filteredFichas.length}</div>
+                <div className="text-lg font-bold text-[#4AC5BB]">{filteredPratos.length}</div>
                 <div className="text-xs text-[#5F6B6D]">Filtradas</div>
               </div>
               <div>
                 <div className="text-lg font-bold text-[#3599B8]">
-                  {fichas.filter(f => f.usuario_id === usuario.id).length}
+                  {pratos.filter(p => p.usuario_id === usuario.id).length}
                 </div>
                 <div className="text-xs text-[#5F6B6D]">Minhas</div>
               </div>
@@ -150,14 +202,18 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
               </CardContent>
             </Card>
           ) : (
-            filteredPratos.map((prato) => (
-              <Card key={prato.id} className="border-2 border-[#fabd07] hover:border-[#b58821] shadow-lg transition-colors">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-[#000000] text-lg flex items-center justify-between">
-                    <span className="flex items-center">
-                      <FileText className="w-5 h-5 mr-3 text-[#fabd07]" />
-                      {prato.nome}
-                    </span>
+            filteredPratos.map((prato) => {
+              // Verificação de segurança
+              if (!prato || !prato.id) return null
+              
+              return (
+                <Card key={prato.id} className="border-2 border-[#fabd07] hover:border-[#b58821] shadow-lg transition-colors">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-[#000000] text-lg flex items-center justify-between">
+                      <span className="flex items-center">
+                        <FileText className="w-5 h-5 mr-3 text-[#fabd07]" />
+                        {prato.nome || 'Nome não informado'}
+                      </span>
                     <Button
                       onClick={() => onVerDetalhes(prato)}
                       size="sm"
@@ -170,17 +226,43 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
                 <CardContent className="pt-0">
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center text-[#5F6B6D]">
-                      <User className="w-4 h-4 mr-2" />
-                      <span>Criado por: <strong>{prato.usuario?.nome || 'N/A'}</strong></span>
-                    </div>
-                    <div className="flex items-center text-[#5F6B6D]">
                       <Calendar className="w-4 h-4 mr-2" />
-                      <span>Data: <strong>{formatarData(prato.created_at)}</strong></span>
+                      <span>Atualizada em: <strong>{formatarData(prato.updated_at)}</strong></span>
                     </div>
                     {prato.categoria && (
                       <div className="flex items-center text-[#5F6B6D]">
                         <Package className="w-4 h-4 mr-2" />
                         <span>Categoria: <strong>{prato.categoria}</strong></span>
+                      </div>
+                    )}
+                    {prato.descricao && (
+                      <div className="text-[#5F6B6D]">
+                        <p className="text-xs mt-2 p-2 bg-gray-50 rounded border-l-2 border-[#4AC5BB]">
+                          <strong>Observação:</strong> {prato.descricao.length > 80 
+                            ? `${prato.descricao.substring(0, 80)}...`
+                            : prato.descricao
+                          }
+                        </p>
+                      </div>
+                    )}
+                    {/* Exibir setores */}
+                    {prato.setores && prato.setores.length > 0 && (
+                      <div className="flex items-start text-[#5F6B6D]">
+                        <MapPin className="w-4 h-4 mr-2 mt-0.5" />
+                        <div>
+                          <span>Setores: </span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {prato.setores.map((setor) => (
+                              <span
+                                key={setor}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-[#4AC5BB]/10 text-[#4AC5BB] border border-[#4AC5BB]/30"
+                              >
+                                <span className="mr-1">{getSetorEmoji(setor)}</span>
+                                {setor}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     )}
                     {prato.total_ingredientes && prato.total_ingredientes > 0 && (
@@ -198,7 +280,8 @@ export function ListagemFichas({ usuario, onVoltar, onVerDetalhes, onAtualizar }
                   </div>
                 </CardContent>
               </Card>
-            ))
+              )
+            })
           )}
         </div>
 
