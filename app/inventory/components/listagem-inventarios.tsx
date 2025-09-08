@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Trash2, Calendar, MapPin, Package, Eye, Plus } from "lucide-react"
+import { ArrowLeft, Trash2, Calendar, MapPin, Package, Eye, Plus, CheckCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { inventarioService } from "../../shared/lib/supabase"
 
@@ -26,6 +26,9 @@ export function ListagemInventarios({
   const [inventariosAgrupados, setInventariosAgrupados] = useState<any>({})
   const [dialogExcluir, setDialogExcluir] = useState(false)
   const [inventarioParaExcluir, setInventarioParaExcluir] = useState<any>(null)
+  const [dialogFinalizar, setDialogFinalizar] = useState(false)
+  const [inventarioParaFinalizar, setInventarioParaFinalizar] = useState<any>(null)
+  const [finalizandoInventario, setFinalizandoInventario] = useState(false)
 
   useEffect(() => {
     carregarInventarios()
@@ -140,6 +143,48 @@ export function ListagemInventarios({
     )
   }
 
+  // Verificar se pode finalizar inventário
+  const podeFinalizar = (inventario: any) => {
+    return inventario.status === "em_contagem" && usuario?.permissoes?.includes("editar")
+  }
+
+  // Confirmar finalização
+  const confirmarFinalizacao = (inventario: any) => {
+    setInventarioParaFinalizar(inventario)
+    setDialogFinalizar(true)
+  }
+
+  // Finalizar inventário
+  const finalizarInventario = async () => {
+    if (!inventarioParaFinalizar) return
+    
+    try {
+      setFinalizandoInventario(true)
+      console.log("Finalizando inventário:", inventarioParaFinalizar.id)
+      
+      const resultado = await inventarioService.finalizar(inventarioParaFinalizar.id)
+      console.log("Inventário finalizado com sucesso:", resultado)
+      
+      // Atualizar a lista local
+      setInventarios(inventarios.map(inv => 
+        inv.id === inventarioParaFinalizar.id 
+          ? { ...inv, status: "finalizado" }
+          : inv
+      ))
+      
+      setDialogFinalizar(false)
+      setInventarioParaFinalizar(null)
+      alert("Inventário finalizado com sucesso!")
+      
+    } catch (error: any) {
+      console.error("Erro ao finalizar inventário:", error)
+      const errorMessage = error?.message || error?.toString() || "Erro desconhecido"
+      alert(`Erro ao finalizar inventário: ${errorMessage}`)
+    } finally {
+      setFinalizandoInventario(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#A9C4E5] to-[#F4DDAE] p-4">
       {carregando && (
@@ -244,6 +289,18 @@ export function ListagemInventarios({
                           </Button>
                         )}
 
+                        {/* Botão Finalizar - aparece para inventários em contagem */}
+                        {podeFinalizar(inventario) && (
+                          <Button
+                            size="sm"
+                            onClick={() => confirmarFinalizacao(inventario)}
+                            className="flex-1 bg-[#4AC5BB] hover:bg-[#3b9fb5] text-white h-8 text-xs"
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Finalizar
+                          </Button>
+                        )}
+
                         {podeExcluir(inventario) && (
                           <Button
                             size="sm"
@@ -298,6 +355,47 @@ export function ListagemInventarios({
               <Button
                 variant="outline"
                 onClick={() => setDialogExcluir(false)}
+                className="w-full border-[#C9B07A] text-[#000000] hover:bg-[#F4DDAE]"
+              >
+                Cancelar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Confirmação de Finalização */}
+        <Dialog open={dialogFinalizar} onOpenChange={setDialogFinalizar}>
+          <DialogContent className="max-w-sm mx-auto">
+            <DialogHeader>
+              <DialogTitle className="text-[#4AC5BB]">Finalizar Inventário</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-[#000000]">
+                Tem certeza que deseja finalizar o inventário do setor <strong>{inventarioParaFinalizar?.setor}</strong>?
+              </p>
+              <div className="bg-[#4AC5BB]/10 p-3 rounded-lg">
+                <p className="text-sm text-[#4AC5BB]">
+                  ✅ Após finalizar, o inventário não poderá mais ser editado e passará para o status "Finalizado".
+                </p>
+              </div>
+              <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                <p className="text-sm text-amber-800">
+                  📝 <strong>Importante:</strong> Verifique se todos os itens foram contados corretamente antes de finalizar.
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="flex-col space-y-2">
+              <Button 
+                onClick={finalizarInventario} 
+                disabled={finalizandoInventario}
+                className="w-full bg-[#4AC5BB] hover:bg-[#4AC5BB]/80 text-white"
+              >
+                {finalizandoInventario ? "Finalizando..." : "Sim, Finalizar"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setDialogFinalizar(false)}
+                disabled={finalizandoInventario}
                 className="w-full border-[#C9B07A] text-[#000000] hover:bg-[#F4DDAE]"
               >
                 Cancelar

@@ -283,7 +283,18 @@ export function GeradorEtiquetas({ transformacaoId, usuario, onVoltar }: Gerador
       link.download = filename
       document.body.appendChild(link)
       link.click()
-      document.body.removeChild(link)
+      
+      // Remoção segura do link com setTimeout para evitar race conditions
+      setTimeout(() => {
+        try {
+          if (link && link.parentNode === document.body) {
+            document.body.removeChild(link)
+          }
+        } catch (error) {
+          console.warn('Aviso: erro ao remover link de download:', error)
+        }
+      }, 100)
+      
       URL.revokeObjectURL(url)
 
       alert(`✅ Arquivo de instruções baixado!\n\nO arquivo contém:\n• Dados de todas as etiquetas\n• Instruções passo-a-passo\n• 3 opções diferentes de impressão`)

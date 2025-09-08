@@ -621,7 +621,17 @@ export class PrintService {
     
     document.body.appendChild(link)
     link.click()
-    document.body.removeChild(link)
+    
+    // Remoção segura do link com setTimeout para evitar race conditions
+    setTimeout(() => {
+      try {
+        if (link && link.parentNode === document.body) {
+          document.body.removeChild(link)
+        }
+      } catch (error) {
+        console.warn('Aviso: erro ao remover link de download:', error)
+      }
+    }, 100)
     
     URL.revokeObjectURL(url)
   }

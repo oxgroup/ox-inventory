@@ -293,8 +293,14 @@ export class EtiquetaService {
         )
       }
 
-      // Limpar container temporário
-      document.body.removeChild(container)
+      // Limpar container temporário com verificação de segurança
+      try {
+        if (container && container.parentNode === document.body) {
+          document.body.removeChild(container)
+        }
+      } catch (error) {
+        console.warn('Aviso: erro ao remover container temporário:', error)
+      }
 
       // Retornar como blob
       const pdfBlob = pdf.output('blob')

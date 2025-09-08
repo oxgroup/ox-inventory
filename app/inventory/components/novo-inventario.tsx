@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SafeSelectContent, SelectItem, SelectTrigger, SelectValue } from "../../shared/components/safe-select"
 import { ArrowLeft, Save } from "lucide-react"
 import { inventarioService } from "../../shared/lib/supabase"
 import type { Usuario } from "../../shared/lib/auth"
@@ -90,13 +90,13 @@ export function NovoInventario({ usuario, onVoltar, onInventarioCriado }: NovoIn
                 <SelectTrigger className="h-12 border-2 border-[#C9B07A] focus:border-[#fabd07]">
                   <SelectValue placeholder="Escolha um setor..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SafeSelectContent>
                   {SETORES.map((setor) => (
                     <SelectItem key={setor} value={setor}>
                       {setor}
                     </SelectItem>
                   ))}
-                </SelectContent>
+                </SafeSelectContent>
               </Select>
             </div>
 

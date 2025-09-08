@@ -170,6 +170,27 @@ export const inventarioService = {
       if (error) throw error
     })
   },
+
+  // Finalizar inventário
+  async finalizar(id: string) {
+    return withRetry(async () => {
+      // Primeiro tentar apenas com status, caso data_finalizacao não exista
+      const { data, error } = await supabase
+        .from("inventarios")
+        .update({ 
+          status: "finalizado"
+        })
+        .eq("id", id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Erro ao finalizar inventário no banco:", error)
+        throw new Error(`Erro ao finalizar inventário: ${error.message}`)
+      }
+      return data
+    })
+  },
 }
 
 // Serviço de produtos

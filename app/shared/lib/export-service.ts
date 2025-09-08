@@ -74,10 +74,20 @@ export const exportService = {
       link.download = nomeArquivo
       link.style.display = 'none'
       
-      // Adicionar ao DOM, clicar e remover
+      // Adicionar ao DOM, clicar e remover com segurança
       document.body.appendChild(link)
       link.click()
-      document.body.removeChild(link)
+      
+      // Remoção segura do link com setTimeout para evitar race conditions
+      setTimeout(() => {
+        try {
+          if (link && link.parentNode === document.body) {
+            document.body.removeChild(link)
+          }
+        } catch (error) {
+          console.warn('Aviso: erro ao remover link de exportação:', error)
+        }
+      }, 100)
       
       // Liberar memória
       URL.revokeObjectURL(url)
